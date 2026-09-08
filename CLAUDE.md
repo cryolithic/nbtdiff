@@ -161,6 +161,14 @@ Things discovered while building that are not visible from the code. Append here
   use the replacement the XAML compiler names. `App.Tests` has `ImmediateUiDispatcher` (runs
   `Post` inline, `Tick()` simulates a coalescer flush) and `FakeDialogService`.
 
+- 2026-09-08 (S6): injected input (`SendKeys`, `keybd_event`, `mouse_event`) never reaches the app
+  here — `SetForegroundWindow` is refused — but `PostMessage(WM_KEYDOWN / WM_LBUTTONDOWN)` straight
+  to the hwnd works. Script: scratchpad `s6-launch.ps1` (`-SendKeys "key:0x77;click:x,y"`,
+  window-relative pixels at 200 %). Views must focus their grid on `Loaded` or keys are dead.
+- 2026-09-08 (S6): the `DataGrid` selection brush overrides the row status tint on the selected
+  row (cosmetic; the glyph still shows). `RegionCompareViewModel` keeps both `RegionFile`s open
+  while a chunk view is on top of it; `MainWindowViewModel.Back` disposes `IDisposable` views.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

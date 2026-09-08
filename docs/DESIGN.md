@@ -432,23 +432,46 @@ Double-click or Enter on a file row raises `FolderCompareViewModel.NavigationReq
 `Application.DataTemplates` in `App.axaml` (one `DataTemplate` per view model). Startup errors show
 an in-window placeholder, not a modal.
 
-### 5.2 RegionCompareView
+### 5.2 RegionCompareView (as shipped in S6)
 
-A 32×32 grid of cells colored by `ChunkDiffCell.Status`, plus the region coords and counts. Click
-a cell → FileCompareView for that chunk pair. Arrow keys move the selection; Enter opens.
+`RegionGridModel` (pure, unit-tested) holds 1024 `ChunkCellItem`s, counts, and a clamped
+selection; `RegionCompareViewModel` opens both `RegionFile`s off the UI thread, runs
+`RegionDiffer.Diff` with the scan's fingerprints (unchanged chunks are never parsed), and keeps the
+files open for the life of the view because chunk views read from them (`Back` disposes one level
+at a time). Cells: Same dim green, Different red, LeftOnly blue, RightOnly purple, Error warning
+colour, absent-on-both empty; tooltip with chunk coords and error text; header with region coords,
+counts and a legend. `Apply` auto-selects the first non-Same cell in (z, x) order. Arrow keys move
+the selection (may rest on empty slots; Open is a no-op there); click/Enter → FileCompareView for
+that chunk pair via `DiffChunk`. A region that fails to open on either side is a view-level error
+with an empty grid. The compound-order option lives in the file view, not here.
 
-### 5.3 FileCompareView
+### 5.3 FileCompareView (as shipped in S6)
 
-A **single aligned tree** rather than two panes: one `DataGrid` over `FlatTreeSource<…>` wrapping `DiffNode` with columns
-Name · Type · Left value · Right value · Status. Unchanged subtrees are collapsed by default;
-"Show unchanged" expands them. F7/F8 = previous/next changed node (depth-first over
-`ChangedDescendants > 0`). Arrays render `int[4096] · differs at [17]` and, on selection, a
-detail pane showing a hex/element view of both sides around the first difference.
+A **single aligned tree**: one `DataGrid` over `FlatTreeSource<DiffNodeItem>` with columns
+Name · Type · Left value · Right value · Status (glyph + colour per `DiffKind`, including
+`Moved`/`Renamed`). The diff is produced by an `IDiffSource` (`FileDiffSource` loads both
+`NbtDocument`s off the UI thread; `ChunkDiffSource` wraps a `DiffNode` from the region view;
+`TagPairSource` for tests) and re-run in place when the options change: a compound-order toggle and
+a checkbox "Match list items by UUID / id" (→ `KeyedAligner.Default`).
 
-### 5.4 Startup
+Projection: every two-sided node with changes below it is expanded; one-sided (`Added`/`Removed`)
+subtrees are shown collapsed; unchanged subtrees are hidden unless "Show unchanged" is on, which
+switches on automatically when the trees are identical. F7/F8 = previous/next changed node in
+pre-order, wrapping at both ends; from an unchanged selection they go to the nearest change
+before/after. Scalars render through `SnbtWriter.WriteValue` (bytes signed), strings truncated
+with full text in the tooltip, arrays as `int[4096] · differs at [17]`; selecting an array row
+shows a detail pane of ±16 elements around `ArrayDifference.FirstDifference` (index 0 for
+identical/one-sided arrays) with the differing index highlighted. Title shows the pair
+(file names, or `r.0.0.mca (3, 1)`). Both grids take keyboard focus on `Loaded` — without that
+F7/F8/arrows/Enter are dead.
 
-`nbtdiff <left> <right>`: if both are directories → folder compare starts immediately; both files →
-file/region compare; mismatched → error dialog. No args → empty folder view.
+### 5.4 Startup (as shipped)
+
+`nbtdiff <left> <right>`: two directories → folder compare starts immediately. Two files → by
+`FileClassifier` kind: Region → RegionCompareView, Nbt/Snbt → FileCompareView, Json/Text/Binary →
+placeholder until the S7 text view exists; different kinds → error view. One existing file plus a
+missing path opens the compare with an absent side (region: all cells Left/RightOnly). No args →
+empty folder view. Errors are in-window placeholder views, not modals.
 
 ## 6. Test fixtures
 

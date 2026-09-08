@@ -234,6 +234,11 @@ stays responsive.
 
 ## S6 — File and region compare views
 
+**Status:** done 2026-09-08 (agent, merged as 91a8d12). Deviations: region view has no
+compound-order option (it lives in the file view); one-sided subtrees shown collapsed; wrap-around
+F7/F8; aligner toggle is a checkbox; different-kind file pairs are an error view. DESIGN §5.2–5.4
+updated.
+
 **Needs:** S4, S5.
 
 **Produces** in `src/NbtDiff.App/`
