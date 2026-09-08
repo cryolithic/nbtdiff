@@ -1,0 +1,160 @@
+using fNbt;
+using NbtDiff.App.ViewModels;
+using NbtDiff.Core;
+using NbtDiff.Nbt;
+using NbtDiff.TestFixtures;
+
+namespace NbtDiff.App.Tests;
+
+public class RegionCompareViewModelTests
+{
+    private static WorldBuilder Base() => new WorldBuilder(seed: 42).WithRegion(0, 0, chunks: 40);
+    private static string Region(string dir) => Path.Combine(dir, "region", "r.0.0.mca");
+
+    private static async Task<RegionCompareViewModel> Loaded(string? left, string? right, FileFingerprint? lfp = null, FileFingerprint? rfp = null)
+    {
+        var vm = new RegionCompareViewModel(left, right, lfp, rfp, new ImmediateUiDispatcher());
+        await vm.Load().WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.False(vm.IsBusy);
+        return vm;
+    }
+
+    [Fact]
+    public async Task MutatedChunk_IsTheOnlyDifferentCell()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        Base().Write(l.Path);
+        Base().Mutate(m => m.Chunk(0, 0, 3, 1).SetPath("InhabitedTime", 999L)).Write(r.Path);
+
+        using var vm = await Loaded(Region(l.Path), Region(r.Path));
+        Assert.False(vm.HasError);
+        Assert.Equal("r.0.0.mca", vm.Title);
+        Assert.Equal(40, vm.Grid.Present);
+        Assert.Equal(1, vm.Grid.Different);
+        Assert.Equal(39, vm.Grid.Same);
+        Assert.Equal(ChunkDiffStatus.Different, vm.Grid[3, 1].Status);
+        Assert.Same(vm.Grid[3, 1], vm.Grid.Selected);
+        Assert.Equal("40 chunks · 1 different · 39 same", vm.HeaderText);
+    }
+
+    [Fact]
+    public async Task WithScanFingerprints_SameResult()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        Base().Write(l.Path);
+        Base().Mutate(m => m.Chunk(0, 0, 3, 1).SetPath("InhabitedTime", 999L)).Recompress(ChunkRef.SchemeGZip).Write(r.Path);
+        var fp = new Fingerprinter();
+        var lfp = (await fp.QuickAsync(Region(l.Path), FileKind.Region)).ValueOrThrow();
+        var rfp = (await fp.QuickAsync(Region(r.Path), FileKind.Region)).ValueOrThrow();
+
+        using var vm = await Loaded(Region(l.Path), Region(r.Path), lfp, rfp);
+        Assert.Equal(1, vm.Grid.Different);
+        Assert.Equal(39, vm.Grid.Same);   // quick hashes all differ (recompressed) but content compare resolves them
+    }
+
+    [Fact]
+    public async Task OpenSelected_PushesChunkDiff_WithInhabitedTimeOnly()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        Base().Write(l.Path);
+        Base().Mutate(m => m.Chunk(0, 0, 3, 1).SetPath("InhabitedTime", 999L)).Write(r.Path);
+        using var vm = await Loaded(Region(l.Path), Region(r.Path));
+
+        ViewModelBase? pushed = null;
+        vm.NavigationRequested += v => pushed = v;
+        vm.OpenSelectedCommand.Execute(null);
+
+        var chunk = Assert.IsType<FileCompareViewModel>(pushed);
+        Assert.Equal("r.0.0.mca (3, 1)", chunk.Title);
+        await chunk.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.False(chunk.HasError);
+        var change = Assert.Single(chunk.ChangedNodes);
+        Assert.Equal("InhabitedTime", change.Path);
+        Assert.Equal(DiffKind.ValueChanged, change.Kind);
+        Assert.Equal("999L", change.RightValueText);
+        // Siblings are collapsed/hidden: only root + the change are rows.
+        Assert.Equal(2, chunk.Tree.Rows.Count);
+        Assert.All(chunk.Root!.Children.Where(c => c.Path != "InhabitedTime"), c => Assert.Equal(0, c.ChangedDescendants));
+    }
+
+    [Fact]
+    public async Task OpenSelected_OnEmptySlot_DoesNothing()
+    {
+        using var l = new TempDir();
+        Base().Write(l.Path);
+        using var vm = await Loaded(Region(l.Path), Region(l.Path));
+        int pushes = 0;
+        vm.NavigationRequested += _ => pushes++;
+        vm.Grid.Select(20, 20);
+        vm.OpenSelectedCommand.Execute(null);
+        Assert.Equal(0, pushes);
+    }
+
+    [Fact]
+    public async Task MissingRightSide_AllLeftOnly()
+    {
+        using var l = new TempDir();
+        Base().Write(l.Path);
+        using var vm = await Loaded(Region(l.Path), Path.Combine(l.Path, "nope", "r.0.0.mca"));
+        Assert.False(vm.HasError);
+        Assert.Equal("r.0.0.mca ↔ (missing)", vm.Title);
+        Assert.Equal(40, vm.Grid.LeftOnly);
+        Assert.Equal(0, vm.Grid.Same);
+        Assert.Equal("(missing)", vm.RightPathText);
+    }
+
+    [Fact]
+    public async Task AddedAndRemovedChunks()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        Base().Write(l.Path);
+        Base().Mutate(m => m.RemoveChunk(0, 0, 0, 0).AddChunk(0, 0, 20, 20)).Write(r.Path);
+        using var vm = await Loaded(Region(l.Path), Region(r.Path));
+        Assert.Equal(ChunkDiffStatus.LeftOnly, vm.Grid[0, 0].Status);
+        Assert.Equal(ChunkDiffStatus.RightOnly, vm.Grid[20, 20].Status);
+        Assert.Equal(41, vm.Grid.Present);
+    }
+
+    [Fact]
+    public async Task CorruptFile_IsAnError()
+    {
+        using var d = new TempDir();
+        Base().Write(d.Path);
+        File.WriteAllBytes(d.File("bad.mca"), new byte[100]);
+        using var vm = await Loaded(Region(d.Path), d.File("bad.mca"));
+        Assert.True(vm.HasError);
+        Assert.StartsWith("Right:", vm.ErrorMessage);
+        Assert.Equal(0, vm.Grid.Present);
+    }
+
+    [Fact]
+    public async Task CorruptChunk_IsAnErrorCell()
+    {
+        using var d = new TempDir();
+        var bytes = RegionWriter.Build([new ChunkSpec(0, 0, new NbtCompound("") { new NbtInt("x", 1) }), new ChunkSpec(1, 0, new NbtCompound("") { new NbtInt("x", 2) })]);
+        File.WriteAllBytes(d.File("r.0.0.mca"), bytes);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(0), (1000u << 8) | 1);
+        File.WriteAllBytes(d.File("r.0.0-broken.mca"), bytes);
+
+        using var vm = await Loaded(d.File("r.0.0.mca"), d.File("r.0.0-broken.mca"));
+        Assert.Equal(ChunkDiffStatus.Error, vm.Grid[0, 0].Status);
+        Assert.Contains("(0, 0)", vm.Grid[0, 0].Error);
+        Assert.Equal(ChunkDiffStatus.Same, vm.Grid[1, 0].Status);
+    }
+
+    [Fact]
+    public async Task Dispose_ReleasesFiles()
+    {
+        using var l = new TempDir();
+        Base().Write(l.Path);
+        var vm = await Loaded(Region(l.Path), Region(l.Path));
+        vm.Dispose();
+        Assert.True(vm.IsDisposed);
+        File.Delete(Region(l.Path));   // would throw on Windows if the handle were still open
+        Assert.False(File.Exists(Region(l.Path)));
+    }
+}

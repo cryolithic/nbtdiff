@@ -33,25 +33,56 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Current = vm;
     }
 
+    /// <summary>Pops the current view. The view below keeps its state (a folder scan is not restarted); the popped view is disposed if it owns resources.</summary>
     [RelayCommand(CanExecute = nameof(CanGoBack))]
     public void Back()
     {
         if (_stack.Count <= 1) return;
+        var popped = _stack[^1];
         _stack.RemoveAt(_stack.Count - 1);
         Current = _stack[^1];
+        (popped as IDisposable)?.Dispose();
     }
 
     public FolderCompareViewModel NewFolderCompare()
     {
         var vm = new FolderCompareViewModel(_dialogs, _ui, _fingerprinter);
-        vm.NavigationRequested += row => Push(new PlaceholderViewModel(
-            row.Name, $"File compare is not implemented yet (S6).\n\n{row.RelativePath}\nStatus: {row.Status}" + (row.Error is null ? "" : $"\n{row.Error}")));
+        vm.NavigationRequested += row => Push(CreateCompareView(row.Kind, row.Left?.FullPath, row.Right?.FullPath, row.Left?.Fingerprint, row.Right?.Fingerprint));
         return vm;
     }
 
     /// <summary>
-    /// <c>nbtdiff &lt;left&gt; &lt;right&gt;</c>: two directories start a folder compare; two files go to the
-    /// (placeholder) file compare; anything else is an error view. No arguments: empty folder view.
+    /// The view for one file pair by kind: regions get the chunk grid, NBT/SNBT the tag tree, everything
+    /// else a placeholder until S7 adds text compare. A null path is an absent side. Loading starts immediately.
+    /// </summary>
+    public ViewModelBase CreateCompareView(FileKind kind, string? leftPath, string? rightPath, FileFingerprint? leftFp = null, FileFingerprint? rightFp = null)
+    {
+        switch (kind)
+        {
+            case FileKind.Region:
+            {
+                var vm = new RegionCompareViewModel(leftPath, rightPath, leftFp, rightFp, _ui);
+                vm.NavigationRequested += Push;
+                _ = vm.Load();
+                return vm;
+            }
+            case FileKind.Nbt:
+            case FileKind.Snbt:
+            {
+                var vm = new FileCompareViewModel(new FileDiffSource(leftPath, rightPath), _ui);
+                _ = vm.Load();
+                return vm;
+            }
+            default:
+                return new PlaceholderViewModel(FileDiffSource.PairTitle(leftPath, rightPath),
+                    $"{kind} files are compared byte for byte in the folder view; a text compare view is not implemented yet (S7).\n\n{leftPath ?? "(missing)"}\n{rightPath ?? "(missing)"}");
+        }
+    }
+
+    /// <summary>
+    /// <c>nbtdiff &lt;left&gt; &lt;right&gt;</c>: two directories start a folder compare; two files (or one file
+    /// and a missing path) open the compare view for their kind; anything else is an error view.
+    /// No arguments: empty folder view.
     /// </summary>
     public void Start(IReadOnlyList<string> args)
     {
@@ -78,9 +109,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Push(vm);
             vm.CompareCommand.Execute(null);
         }
-        else if (leftFile && rightFile)
+        else if ((leftFile || rightFile) && !leftDir && !rightDir)
         {
-            Push(new PlaceholderViewModel("File compare", $"File compare is not implemented yet (S6).\n\n{left}\n{right}"));
+            var leftKind = leftFile ? FileClassifier.Classify(left) : (FileKind?)null;
+            var rightKind = rightFile ? FileClassifier.Classify(right) : (FileKind?)null;
+            if (leftKind is not null && rightKind is not null && leftKind != rightKind)
+            {
+                Push(new PlaceholderViewModel("Cannot compare",
+                    $"The files are of different kinds.\n\n{left} — {leftKind}\n{right} — {rightKind}", isError: true));
+                return;
+            }
+            Push(CreateCompareView(leftKind ?? rightKind!.Value, leftFile ? left : null, rightFile ? right : null));
         }
         else
         {

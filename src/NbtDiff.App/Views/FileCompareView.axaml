@@ -1,0 +1,153 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NbtDiff.App.ViewModels"
+             xmlns:conv="using:NbtDiff.App.Converters"
+             x:Class="NbtDiff.App.Views.FileCompareView"
+             x:DataType="vm:FileCompareViewModel">
+
+  <UserControl.Resources>
+    <conv:DiffKindBackgroundConverter x:Key="KindBackground" />
+    <conv:DifferentRowBackgroundConverter x:Key="DifferentRowBackground" />
+    <conv:DepthToMarginConverter x:Key="DepthToMargin" />
+  </UserControl.Resources>
+
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="F7" Command="{Binding PreviousChangeCommand}" />
+    <KeyBinding Gesture="F8" Command="{Binding NextChangeCommand}" />
+  </UserControl.KeyBindings>
+
+  <UserControl.Styles>
+    <Style Selector="DataGrid#Grid DataGridRow">
+      <Setter Property="Background" Value="{ReflectionBinding Kind, Converter={StaticResource KindBackground}}" />
+      <Setter Property="ToolTip.Tip" Value="{ReflectionBinding ToolTipText}" />
+    </Style>
+    <Style Selector="DataGrid#Detail DataGridRow">
+      <Setter Property="Background" Value="{ReflectionBinding IsDifferent, Converter={StaticResource DifferentRowBackground}}" />
+    </Style>
+    <Style Selector="Button.expander">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.placeholder">
+      <Setter Property="Opacity" Value="0.35" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.cell">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+
+    <!-- Toolbar -->
+    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <CheckBox Content="Show unchanged" IsChecked="{Binding ShowUnchanged}" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <CheckBox Content="Key order matters" IsChecked="{Binding CompoundOrderMatters}"
+                  ToolTip.Tip="Report compounds whose keys are in a different order" />
+        <CheckBox Content="Match list items by UUID / id" IsChecked="{Binding UseKeyedAligner}"
+                  ToolTip.Tip="Pair entities, block entities and items by their key instead of by position" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <Button Content="◀ Previous change (F7)" Command="{Binding PreviousChangeCommand}" />
+        <Button Content="Next change (F8) ▶" Command="{Binding NextChangeCommand}" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <Button Content="Expand all" Command="{Binding ExpandAllCommand}" />
+        <Button Content="Collapse all" Command="{Binding CollapseAllCommand}" />
+      </StackPanel>
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
+      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" FontFamily="Consolas,monospace" />
+    </StackPanel>
+
+    <!-- Status bar -->
+    <TextBlock DockPanel.Dock="Bottom" Margin="8,4,8,6" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis" />
+
+    <!-- Array detail pane -->
+    <Border DockPanel.Dock="Bottom" IsVisible="{Binding HasArrayDetail}" Margin="8,4,8,0" Height="220"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Array elements around the first difference" Margin="0,6,0,4" FontWeight="SemiBold" />
+        <DataGrid x:Name="Detail" ItemsSource="{Binding ArrayDetail}" IsReadOnly="True" AutoGenerateColumns="False"
+                  CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="Vertical" RowHeight="22">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Index" Width="80" Binding="{Binding Index}" x:DataType="vm:ArrayDetailRow" />
+            <DataGridTextColumn Header="Left" Width="*" Binding="{Binding Left}" x:DataType="vm:ArrayDetailRow" />
+            <DataGridTextColumn Header="Right" Width="*" Binding="{Binding Right}" x:DataType="vm:ArrayDetailRow" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </Border>
+
+    <!-- Aligned tree: one row per node, both values side by side -->
+    <DataGrid x:Name="Grid"
+              ItemsSource="{Binding Tree.Rows}"
+              SelectedItem="{Binding SelectedItem}"
+              IsReadOnly="True"
+              AutoGenerateColumns="False"
+              CanUserSortColumns="False"
+              CanUserReorderColumns="False"
+              CanUserResizeColumns="True"
+              SelectionMode="Single"
+              HeadersVisibility="Column"
+              GridLinesVisibility="Vertical"
+              RowHeight="24"
+              Margin="8,0">
+      <DataGrid.Columns>
+
+        <DataGridTemplateColumn Header="Name" Width="2*" x:DataType="vm:DiffNodeItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:DiffNodeItem">
+              <StackPanel Orientation="Horizontal" Margin="{Binding Depth, Converter={StaticResource DepthToMargin}}">
+                <Button Classes="expander" Content="{Binding ExpanderGlyph}"
+                        Command="{Binding $parent[UserControl].((vm:FileCompareViewModel)DataContext).ToggleCommand}"
+                        CommandParameter="{Binding}" />
+                <TextBlock Classes="cell" Text="{Binding Name}" />
+              </StackPanel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTextColumn Header="Type" Width="110" Binding="{Binding TypeText}" x:DataType="vm:DiffNodeItem" />
+
+        <DataGridTemplateColumn Header="Left" Width="3*" x:DataType="vm:DiffNodeItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:DiffNodeItem">
+              <Panel>
+                <TextBlock Classes="cell" Text="{Binding LeftValueText}" ToolTip.Tip="{Binding LeftToolTip}" IsVisible="{Binding HasLeft}" />
+                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasLeft}" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="" Width="36" x:DataType="vm:DiffNodeItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:DiffNodeItem">
+              <TextBlock Text="{Binding StatusGlyph}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Right" Width="3*" x:DataType="vm:DiffNodeItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:DiffNodeItem">
+              <Panel>
+                <TextBlock Classes="cell" Text="{Binding RightValueText}" ToolTip.Tip="{Binding RightToolTip}" IsVisible="{Binding HasRight}" />
+                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasRight}" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

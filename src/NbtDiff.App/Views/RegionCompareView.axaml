@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NbtDiff.App.ViewModels"
+             xmlns:conv="using:NbtDiff.App.Converters"
+             x:Class="NbtDiff.App.Views.RegionCompareView"
+             x:DataType="vm:RegionCompareViewModel">
+
+  <UserControl.Resources>
+    <conv:ChunkStatusBrushConverter x:Key="ChunkBrush" />
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <Style Selector="Border.chunk">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Margin" Value="1" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.chunk.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    <Style Selector="Border.legend">
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="8,0,4,0" />
+    </Style>
+    <Style Selector="TextBlock.legend">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+
+    <!-- Header -->
+    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="4">
+      <Grid ColumnDefinitions="*,24,*">
+        <TextBlock Grid.Column="0" Text="{Binding LeftPathText}" Opacity="0.7" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding LeftPathText}" />
+        <TextBlock Grid.Column="1" Text="↔" HorizontalAlignment="Center" Opacity="0.7" />
+        <TextBlock Grid.Column="2" Text="{Binding RightPathText}" Opacity="0.7" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RightPathText}" />
+      </Grid>
+      <TextBlock Text="{Binding HeaderText}" FontWeight="SemiBold" />
+      <StackPanel Orientation="Horizontal">
+        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.Same}, Converter={StaticResource ChunkBrush}}" Margin="0,0,4,0" /><TextBlock Classes="legend" Text="same" />
+        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.Different}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="different" />
+        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.LeftOnly}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="left only" />
+        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.RightOnly}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="right only" />
+        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.Error}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="error" />
+        <TextBlock Classes="legend" Text="   Arrow keys move · Enter or double-click opens the chunk" Opacity="0.6" />
+      </StackPanel>
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
+      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" FontFamily="Consolas,monospace" />
+    </StackPanel>
+
+    <!-- Selection / open -->
+    <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,6">
+      <Button DockPanel.Dock="Right" Content="Open chunk" Command="{Binding OpenSelectedCommand}" Classes="accent" />
+      <TextBlock Text="{Binding Grid.SelectionText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+    </DockPanel>
+
+    <!-- 32×32 grid; x grows to the right, z grows downward -->
+    <Border x:Name="GridHost" Focusable="True" Margin="8,0" Background="Transparent">
+      <Viewbox Stretch="Uniform" StretchDirection="Both">
+        <ItemsControl x:Name="Cells" ItemsSource="{Binding Grid.Cells}" Width="704" Height="704">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="32" Rows="32" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ChunkCellItem">
+              <Border Classes="chunk" Classes.selected="{Binding IsSelected}"
+                      Background="{Binding Status, Converter={StaticResource ChunkBrush}}"
+                      ToolTip.Tip="{Binding ToolTipText}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Viewbox>
+    </Border>
+  </DockPanel>
+</UserControl>

@@ -12,6 +12,12 @@
     <DataTemplate DataType="vm:FolderCompareViewModel">
       <views:FolderCompareView />
     </DataTemplate>
+    <DataTemplate DataType="vm:RegionCompareViewModel">
+      <views:RegionCompareView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:FileCompareViewModel">
+      <views:FileCompareView />
+    </DataTemplate>
     <DataTemplate DataType="vm:PlaceholderViewModel">
       <views:PlaceholderView />
     </DataTemplate>
