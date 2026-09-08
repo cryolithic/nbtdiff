@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using NbtDiff.App.ViewModels;
 
@@ -13,6 +14,20 @@ public partial class FolderCompareView : UserControl
         InitializeComponent();
         Grid.DoubleTapped += OnGridDoubleTapped;
         Grid.KeyDown += OnGridKeyDown;
+        // The view is rebuilt when the user comes Back from a file/region view while the view model
+        // (and its SelectedRow) survives; put the row back on screen and give the grid the keyboard so
+        // the next row is one arrow key away.
+        Loaded += (_, _) => Dispatcher.UIThread.Post(RestoreSelection, DispatcherPriority.Background);
+    }
+
+    private void RestoreSelection()
+    {
+        if (Vm?.SelectedRow is { } row && Grid.ItemsSource is not null)
+        {
+            Grid.SelectedItem = row;
+            Grid.ScrollIntoView(row, null);
+        }
+        Grid.Focus();
     }
 
     private FolderCompareViewModel? Vm => DataContext as FolderCompareViewModel;

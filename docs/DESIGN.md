@@ -316,7 +316,10 @@ that is a directory on one side and a file on the other is a single `Error` row 
 
 Status rules: Tier 1 `Same` is final; a Tier-1 mismatch is `ProbablyDifferent` and queues Tier 2
 (when `DeepVerify`), except kind mismatches and `Binary` files, which are final `Different`. Tier 2
-resolves to `Same`/`Different`. A failed fingerprint or a region with `ChunkErrors` on either side
+resolves to `Same`/`Different`. With `DeepVerify` off a mismatch **stays** `ProbablyDifferent` —
+the scan cannot tell recompression from a real change without parsing, so it never claims
+`Different`; the region/file views verify on open, and the region header says so when it finds no
+differing chunk. A failed fingerprint or a region with `ChunkErrors` on either side
 is `Error`. Folder status: one-sided → `LeftOnly`/`RightOnly`; else `Different` if any descendant
 is Different/LeftOnly/RightOnly (orphans make a folder differ, as in Beyond Compare); else
 `ProbablyDifferent` > `Error` > `Pending` > `Same`.
@@ -453,6 +456,8 @@ region/ (43%)`, then `pass 2 of 2 — verifying content 12/31`.
 Status bar: `3 differ · 4 same · 1 left-only · 2 right-only · 1 error · scanning region/ (43%)`
 — the "scanning" directory is the parent of the last changed file (S3 exposes no current dir).
 
+On `Loaded` the view re-selects the view model's `SelectedRow`, scrolls it into view and focuses the
+grid, so coming Back from a file/region view lands on the row that was opened.
 Double-click or Enter on a file row raises `FolderCompareViewModel.NavigationRequested(CompareRow)`;
 `MainWindowViewModel.Push/Back` is the navigation stack and views map to view models through
 `Application.DataTemplates` in `App.axaml` (one `DataTemplate` per view model). Startup errors show

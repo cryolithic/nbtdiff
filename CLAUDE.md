@@ -197,6 +197,11 @@ Things discovered while building that are not visible from the code. Append here
   is negligible by comparison. Hashing is not the bottleneck; the next win for that setup is a
   persisted fingerprint cache keyed by (path, size, mtime) so repeat compares skip unchanged files.
 
+- 2026-09-08: `RowStatus.Different` means content-verified. A byte-only mismatch is
+  `ProbablyDifferent` ("≠?") whether Tier 2 is pending or Deep verify is off; the region view
+  explains an all-Same grid for a flagged file. `ScanGridConsistencyTests` pins scan ⇔ grid
+  agreement over the fixture variants.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

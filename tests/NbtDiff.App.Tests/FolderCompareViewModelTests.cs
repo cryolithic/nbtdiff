@@ -122,13 +122,15 @@ public class FolderCompareViewModelTests
     }
 
     [Fact]
-    public async Task Recompress_WithoutDeepVerify_ShowsDifferent()
+    public async Task Recompress_WithoutDeepVerify_ShowsProbablyDifferent()
     {
+        // Unverified byte differences are reported as such, never as verified differences.
         var (l, r) = Pair(Base(), Base().Recompress(ChunkRef.SchemeGZip));
         using (l) using (r)
         {
             var (vm, _, _) = await Scanned(l.Path, r.Path, deepVerify: false);
-            Assert.StartsWith("2 differ · 1 same", vm.StatusText);
+            Assert.StartsWith("2 probably differ · 1 same", vm.StatusText);
+            Assert.All(vm.Tree.Rows.Where(i => !i.IsDirectory && i.Name.EndsWith(".mca")), i => Assert.Equal(RowStatus.ProbablyDifferent, i.Status));
         }
     }
 

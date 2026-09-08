@@ -34,7 +34,7 @@ files are under the Errors filter (and All).
 | `↑` `↓` | move | move selection | move |
 | `F8` / `F7` | — | — | next / previous change (wraps) |
 | `Ctrl+F8` / `Ctrl+F7` | — | — | next / previous changed chunk of the region (chunk views only) |
-| `◀ Back` button | | return to the previous view; a folder scan keeps its state | |
+| `◀ Back` button | | return to the previous view; a folder scan keeps its state and the row you opened is re-selected and scrolled into view | |
 
 Chunks re-saved by Minecraft with only their `LastUpdate` tick changed are not differences: the
 "Ignore tags" box lists tag paths that are not content (default `LastUpdate, Level/LastUpdate`;
@@ -44,7 +44,9 @@ entities by position and items by id, in the scan, the chunk grid and the tag vi
 
 The status bar says which pass is running: `pass 1 of 2 — hashing bytes` reads every file once
 without decompressing; `pass 2 of 2 — verifying content n/m` parses only the files whose bytes
-differed.
+differed. Until pass 2 has settled a row (or with Deep verify off) it shows `≠?` — "bytes differ,
+content not verified" — never `≠`; opening such a region verifies it and says so in the header when
+every chunk turns out identical.
 
 Options (deep verify, key-order sensitivity, matching list items by UUID/id, exclude globs,
 ignored tags, window placement, recent pairs) persist in `%APPDATA%\nbtdiff\settings.json` on Windows and

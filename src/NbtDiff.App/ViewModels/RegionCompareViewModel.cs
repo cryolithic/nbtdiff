@@ -110,7 +110,7 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
                         return;
                     }
                     Grid.Apply(cells!);
-                    HeaderText = Grid.CountsText;
+                    HeaderText = Grid.CountsText + Explain(cells!);
                 }
                 finally
                 {
@@ -119,6 +119,21 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
             });
         });
         return done.Task;
+    }
+
+    /// <summary>
+    /// When the folder scan flagged this file but no chunk differs, say why, so a "different" row
+    /// that opens to an all-green grid is not a mystery: unverified byte differences (Deep verify off
+    /// or scan still in pass 2) are the expected case; a verified mismatch with no differing chunk is not.
+    /// </summary>
+    private string Explain(IReadOnlyList<ChunkDiffCell> cells)
+    {
+        if (_leftFp is null || _rightFp is null || _leftFp.ContentEquals(_rightFp)) return "";
+        if (cells.Any(c => c.Status != ChunkDiffStatus.Same)) return "";
+        bool verified = _leftFp.Tier == FingerprintTier.Deep && _rightFp.Tier == FingerprintTier.Deep;
+        return verified
+            ? " · the scan marked this file different but no chunk differs — please report this"
+            : " · bytes differ (recompression, sector layout or timestamps) but every chunk's content matches";
     }
 
     private bool CanOpenSelected => Grid.Selected is { IsPresent: true };

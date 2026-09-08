@@ -204,7 +204,11 @@ public sealed class CompareRoot
         var (status, error) = await FingerprintAsync(row, deep: false, ct).ConfigureAwait(false);
         if (status == RowStatus.ProbablyDifferent)
         {
-            if (_options.DeepVerify && row.Kind != FileKind.Binary)
+            if (row.Kind == FileKind.Binary)
+            {
+                Publish(row, RowStatus.Different, error);   // bytes are the content: final
+            }
+            else if (_options.DeepVerify)
             {
                 Interlocked.Increment(ref _tier2Queued);
                 Publish(row, status, error);
@@ -212,7 +216,9 @@ public sealed class CompareRoot
             }
             else
             {
-                Publish(row, RowStatus.Different, error);
+                // Without a content pass the scan cannot tell recompression from a real change, so it
+                // must not claim Different; the row stays "bytes differ" and the file/region views verify.
+                Publish(row, RowStatus.ProbablyDifferent, error);
             }
         }
         else

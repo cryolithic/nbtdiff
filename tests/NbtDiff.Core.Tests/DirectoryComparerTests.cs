@@ -99,17 +99,19 @@ public class DirectoryComparerTests
     }
 
     [Fact]
-    public async Task DeepVerifyOff_RecompressStaysDifferent()
+    public async Task DeepVerifyOff_RecompressStaysProbablyDifferent()
     {
+        // Without a content pass the scan can only report "bytes differ"; it must not claim Different.
         var (l, r) = Pair(BaseWorld(), BaseWorld().Recompress(ChunkRef.SchemeGZip));
         using (l) using (r)
         {
             var gated = new GatedFingerprinter(new Fingerprinter());
             gated.QuickGate.SetResult();
             var root = await Scan(l.Path, r.Path, new CompareOptions(DeepVerify: false), gated);
-            Assert.Equal(RowStatus.Different, root.Row("region/r.0.0.mca").Status);
-            Assert.Equal(2, root.Root.Counts.Different);
-            Assert.Equal(0, root.Root.Counts.ProbablyDifferent);
+            Assert.Equal(RowStatus.ProbablyDifferent, root.Row("region/r.0.0.mca").Status);
+            Assert.Equal(0, root.Root.Counts.Different);
+            Assert.Equal(2, root.Root.Counts.ProbablyDifferent);
+            Assert.True(root.Progress.Completed);
             Assert.Equal(0, gated.DeepCalls);
         }
     }
