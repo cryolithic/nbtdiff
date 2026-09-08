@@ -179,6 +179,9 @@ Things discovered while building that are not visible from the code. Append here
   scratchpad `s7-launch.ps1` (`-Delay` ≥ 4 s or the window is not up; `PostKey` VK codes, PageDown
   0x22; `End` only moves columns in a DataGrid).
 
+- 2026-09-08: real worlds contain 0-byte `.mca` files. `RegionFile.Open` treats them as empty
+  regions (not errors) so they compare `Same`; only 1..8191-byte files are "truncated".
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

@@ -102,6 +102,10 @@ public sealed class RegionFile : IDisposable
     private static LoadResult<RegionFile> Open(string path, IRandomReader reader)
     {
         long length = reader.Length;
+        // Minecraft itself leaves 0-byte region files behind (a region touched but never written);
+        // they are legitimately empty, not corrupt. Anything else under a full header is truncated.
+        if (length == 0)
+            return LoadResult<RegionFile>.Success(new RegionFile(path, reader, new byte[HeaderSize]));
         if (length < HeaderSize)
         {
             reader.Dispose();

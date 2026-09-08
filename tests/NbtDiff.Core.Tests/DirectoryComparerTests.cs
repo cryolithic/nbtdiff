@@ -183,6 +183,29 @@ public class DirectoryComparerTests
     }
 
     [Fact]
+    public async Task ZeroByteRegions_AreSame_NotErrors()
+    {
+        // Minecraft leaves 0-byte .mca files behind; two of them are equal empty regions, and an
+        // empty one against a populated one is a difference, not an unreadable file.
+        var (l, r) = Pair(BaseWorld(), BaseWorld());
+        using (l) using (r)
+        {
+            File.WriteAllBytes(l.File(Path.Combine("region", "r.9.9.mca")), []);
+            File.WriteAllBytes(r.File(Path.Combine("region", "r.9.9.mca")), []);
+            File.WriteAllBytes(r.File(Path.Combine("region", "r.0.0.mca")), []);
+
+            var root = await Scan(l.Path, r.Path);
+
+            Assert.Equal(RowStatus.Same, root.Row("region/r.9.9.mca").Status);
+            var emptied = root.Row("region/r.0.0.mca");
+            Assert.Equal(RowStatus.Different, emptied.Status);
+            Assert.Null(emptied.Error);
+            Assert.Equal(0, root.Root.Counts.Error);
+            Assert.Equal(RowStatus.Different, root.Row("region").Status);
+        }
+    }
+
+    [Fact]
     public async Task DirectoryVersusFile_IsError()
     {
         using var l = new TempDir();

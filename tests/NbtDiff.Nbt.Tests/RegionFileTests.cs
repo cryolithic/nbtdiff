@@ -33,8 +33,18 @@ public class RegionFileTests
         Assert.Null(region[0, 0]);
     }
 
+    [Fact]
+    public void ZeroLength_IsAnEmptyRegion()
+    {
+        // Minecraft writes 0-byte .mca files for regions it touched but never saved.
+        using var region = NbtAssert.Ok(RegionFile.Open(new MemoryStream(), "r.0.0.mca"));
+        Assert.Equal(0, region.ChunkCount);
+        Assert.Equal(0, region.Length);
+        Assert.Null(region[5, 5]);
+    }
+
     [Theory]
-    [InlineData(0)]
+    [InlineData(1)]
     [InlineData(100)]
     [InlineData(RegionFile.HeaderSize - 1)]
     public void TooShort_Fails(int length)

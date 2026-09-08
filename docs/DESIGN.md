@@ -148,7 +148,9 @@ public sealed record SnbtOptions(string? Indent = null) { Compact; Pretty; }
 Behavior that differs from upstream nbt-studio (each is a test in `NbtDiff.Nbt.Tests`):
 
 - `RegionFile.Open` reads only the header. A counting stream sees exactly 8192 bytes.
-- Zero occupied slots is `Ok` with `ChunkCount == 0`. A file shorter than 8192 bytes fails.
+- Zero occupied slots is `Ok` with `ChunkCount == 0`, and so is a **0-byte file** — Minecraft
+  leaves those behind for regions it touched but never saved, and two of them compare `Same`.
+  A file of 1..8191 bytes is truncated and fails.
 - A bad header slot (inside the header, past EOF, zero sectors) is listed with `HeaderError`; reads
   of it fail; siblings are unaffected.
 - External chunks resolve `c.<x>.<z>.mcc` from the region's world coords; a region without coords
