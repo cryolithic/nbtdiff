@@ -192,6 +192,11 @@ Things discovered while building that are not visible from the code. Append here
   agree. If a real world still shows a reordered list as changed, the item type is probably missing
   from `KeyedAligner.DefaultKeyNames` — extend the key list, don't special-case the differ.
 
+- 2026-09-08 (real world): a 40 GB Java world with one side on an SMB share — pass 1 (byte
+  hashing) runs at ~580 Mbps, i.e. network-bound at gigabit line rate; pass 2 (content verify)
+  is negligible by comparison. Hashing is not the bottleneck; the next win for that setup is a
+  persisted fingerprint cache keyed by (path, size, mtime) so repeat compares skip unchanged files.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).
