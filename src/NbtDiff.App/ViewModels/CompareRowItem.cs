@@ -8,11 +8,13 @@ namespace NbtDiff.App.ViewModels;
 public enum RowFilter
 {
     All,
-    /// <summary>Different, probably different, one-sided, or error. Pending rows are hidden.</summary>
+    /// <summary>Different, probably different, or one-sided. Errors and pending rows are hidden.</summary>
     Differences,
     Same,
     /// <summary>Left-only and right-only.</summary>
     Orphans,
+    /// <summary>Unreadable on either side.</summary>
+    Errors,
 }
 
 /// <summary>
@@ -94,9 +96,10 @@ public sealed partial class CompareRowItem : ObservableObject, IFlatTreeNode<Com
     public static bool Matches(RowFilter filter, RowStatus status) => filter switch
     {
         RowFilter.All => true,
-        RowFilter.Differences => status is RowStatus.Different or RowStatus.ProbablyDifferent or RowStatus.LeftOnly or RowStatus.RightOnly or RowStatus.Error,
+        RowFilter.Differences => status is RowStatus.Different or RowStatus.ProbablyDifferent or RowStatus.LeftOnly or RowStatus.RightOnly,
         RowFilter.Same => status == RowStatus.Same,
         RowFilter.Orphans => status is RowStatus.LeftOnly or RowStatus.RightOnly,
+        RowFilter.Errors => status == RowStatus.Error,
         _ => true,
     };
 

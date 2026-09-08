@@ -82,6 +82,33 @@ public class FolderCompareViewModelTests
     }
 
     [Fact]
+    public async Task Filter_ErrorsAreNotDifferences()
+    {
+        var (l, r) = Pair(Base(), Base().Mutate(m => m.Chunk(0, 0, 3, 0).SetPath("InhabitedTime", 999L)));
+        using (l) using (r)
+        {
+            // Corrupt one header slot on the right so region/r.1.0.mca becomes an Error row.
+            var path = r.File(Path.Combine("region", "r.1.0.mca"));
+            var bytes = File.ReadAllBytes(path);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(0), (5000u << 8) | 1);
+            File.WriteAllBytes(path, bytes);
+
+            var (vm, _, _) = await Scanned(l.Path, r.Path);
+            vm.Tree.ExpandAll();
+            Assert.Equal(RowStatus.Error, vm.Tree.Rows.Single(i => i.Name == "r.1.0.mca").Status);
+
+            vm.Filter = RowFilter.Differences;
+            Assert.Equal("region region/r.0.0.mca", Names(vm));
+
+            vm.Filter = RowFilter.Errors;
+            Assert.Equal("region region/r.1.0.mca", Names(vm));
+
+            vm.Filter = RowFilter.All;
+            Assert.Contains("region/r.1.0.mca", Names(vm));
+        }
+    }
+
+    [Fact]
     public async Task Recompress_NoDifferencesAfterDeepVerify()
     {
         var (l, r) = Pair(Base(), Base().Recompress(ChunkRef.SchemeGZip));

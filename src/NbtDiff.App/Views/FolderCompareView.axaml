@@ -76,6 +76,10 @@
         <RadioButton Classes="chip" GroupName="filter" Content="Orphans"
                      IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Orphans, Mode=OneWay}"
                      Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Orphans}" />
+        <RadioButton Classes="chip" GroupName="filter" Content="Errors"
+                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Errors, Mode=OneWay}"
+                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Errors}"
+                     ToolTip.Tip="Files unreadable on either side" />
         <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
         <CheckBox Content="Deep verify" IsChecked="{Binding DeepVerify}" ToolTip.Tip="Parse files whose bytes differ, so recompression is not reported as a change" />
         <CheckBox Content="Match list items by key" IsChecked="{Binding UseKeyedAligner}"

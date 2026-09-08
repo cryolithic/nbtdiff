@@ -442,7 +442,8 @@ LeftOnly/RightOnly = blue/purple with `—` in the empty side, Error = strikethr
 Folder colour follows S3's derived folder status.
 
 Toolbar: left/right path boxes, Browse (via `IDialogService` over `IStorageProvider`),
-Compare/Cancel, filter chips (All / Differences / Same / Orphans — "Differences" hides `Pending`),
+Compare/Cancel, filter chips (All / Differences / Same / Orphans / Errors — "Differences" is
+Different/ProbablyDifferent/LeftOnly/RightOnly only; errors have their own chip),
 Deep-verify toggle, "Match list items by key" (keyed lists, default on — shared with the chunk grid
 and tag views), an "Ignore tags" box (comma-separated `TagIgnoreSet` paths, persisted, applied on the
 next compare and by the file/chunk views), Export text / Export JSON (`DiffReport.ToString` to a

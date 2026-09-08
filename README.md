@@ -22,7 +22,8 @@ One side may be a path that does not exist; it is shown as entirely missing.
 
 Folder view row states: `=` same · `≠` different · `≠` dimmed = bytes differ, content not yet
 verified · blue = left only · purple = right only · struck through = unreadable. Folders take the
-"worst" state of their contents.
+"worst" state of their contents. The Differences filter shows changed and one-sided rows; unreadable
+files are under the Errors filter (and All).
 
 ### Keyboard
 
