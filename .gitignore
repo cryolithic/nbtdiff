@@ -8,3 +8,4 @@ TestResults/
 *.suo
 *.DotSettings.user
 *.swp
+.claude/worktrees/
