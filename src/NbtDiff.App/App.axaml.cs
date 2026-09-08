@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using NbtDiff.App.Services;
+using NbtDiff.App.ViewModels;
 
 namespace NbtDiff.App;
 
@@ -12,7 +14,12 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            MainWindow? window = null;
+            var dialogs = new AvaloniaDialogService(() => window);
+            var shell = new MainWindowViewModel(dialogs, AvaloniaUiDispatcher.Instance);
+            window = new MainWindow { DataContext = shell };
+            desktop.MainWindow = window;
+            shell.Start(desktop.Args ?? []);
         }
 
         base.OnFrameworkInitializationCompleted();
