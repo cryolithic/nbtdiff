@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>NbtDiff.Nbt</RootNamespace>
+    <!-- Vendored fNbt uses unsafe code in NbtBinaryWriter. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="NbtDiff.Nbt.Tests" />
+  </ItemGroup>
+
+</Project>

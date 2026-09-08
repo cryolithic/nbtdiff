@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>NbtDiff.TestFixtures</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NbtDiff.Nbt\NbtDiff.Nbt.csproj" />
+  </ItemGroup>
+
+</Project>
