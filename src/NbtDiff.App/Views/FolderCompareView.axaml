@@ -1,0 +1,153 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NbtDiff.App.ViewModels"
+             xmlns:conv="using:NbtDiff.App.Converters"
+             x:Class="NbtDiff.App.Views.FolderCompareView"
+             x:DataType="vm:FolderCompareViewModel">
+
+  <UserControl.Resources>
+    <conv:StatusBackgroundConverter x:Key="StatusBackground" />
+    <conv:StatusDecorationConverter x:Key="StatusDecoration" />
+    <conv:StatusOpacityConverter x:Key="StatusOpacity" />
+    <conv:DepthToMarginConverter x:Key="DepthToMargin" />
+    <conv:EnumEqualsConverter x:Key="EnumEquals" />
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <Style Selector="DataGridRow">
+      <Setter Property="Background" Value="{ReflectionBinding Status, Converter={StaticResource StatusBackground}}" />
+      <Setter Property="ToolTip.Tip" Value="{ReflectionBinding ToolTipText}" />
+    </Style>
+    <Style Selector="Button.expander">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="RadioButton.chip">
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style Selector="TextBlock.placeholder">
+      <Setter Property="Opacity" Value="0.35" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+
+    <!-- Toolbar -->
+    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
+      <Grid ColumnDefinitions="*,Auto,12,*,Auto,12,Auto,Auto" RowDefinitions="Auto">
+        <TextBox Grid.Column="0" Text="{Binding LeftPath}" PlaceholderText="Left folder" />
+        <Button Grid.Column="1" Content="…" Margin="4,0,0,0" Command="{Binding BrowseLeftCommand}" ToolTip.Tip="Browse for the left folder" />
+        <TextBox Grid.Column="3" Text="{Binding RightPath}" PlaceholderText="Right folder" />
+        <Button Grid.Column="4" Content="…" Margin="4,0,0,0" Command="{Binding BrowseRightCommand}" ToolTip.Tip="Browse for the right folder" />
+        <Button Grid.Column="6" Content="Compare" Command="{Binding CompareCommand}" Classes="accent" />
+        <Button Grid.Column="7" Content="Cancel" Margin="4,0,0,0" Command="{Binding CancelCommand}" />
+      </Grid>
+
+      <StackPanel Orientation="Horizontal" Spacing="4">
+        <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,6,0" />
+        <RadioButton Classes="chip" GroupName="filter" Content="All"
+                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=All, Mode=OneWay}"
+                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.All}" />
+        <RadioButton Classes="chip" GroupName="filter" Content="Differences"
+                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Differences, Mode=OneWay}"
+                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Differences}" />
+        <RadioButton Classes="chip" GroupName="filter" Content="Same"
+                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Same, Mode=OneWay}"
+                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Same}" />
+        <RadioButton Classes="chip" GroupName="filter" Content="Orphans"
+                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Orphans, Mode=OneWay}"
+                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Orphans}" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <CheckBox Content="Deep verify" IsChecked="{Binding DeepVerify}" ToolTip.Tip="Parse files whose bytes differ, so recompression is not reported as a change" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <Button Content="Expand all" Command="{Binding ExpandAllCommand}" />
+        <Button Content="Collapse all" Command="{Binding CollapseAllCommand}" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <Button Content="Export text" Command="{Binding ExportCommand}" CommandParameter="text" />
+        <Button Content="Export JSON" Command="{Binding ExportCommand}" CommandParameter="json" />
+      </StackPanel>
+
+      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- Status bar -->
+    <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,6">
+      <ProgressBar DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" Value="{Binding ProgressFraction}" IsVisible="{Binding IsScanning}" Margin="8,0,0,0" />
+      <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+    </DockPanel>
+
+    <!-- Both panes in one grid: identical row set, so scroll and expansion are inherently in sync -->
+    <DataGrid x:Name="Grid"
+              ItemsSource="{Binding Tree.Rows}"
+              SelectedItem="{Binding SelectedRow}"
+              IsReadOnly="True"
+              AutoGenerateColumns="False"
+              CanUserSortColumns="False"
+              CanUserReorderColumns="False"
+              CanUserResizeColumns="True"
+              SelectionMode="Single"
+              HeadersVisibility="Column"
+              GridLinesVisibility="Vertical"
+              RowHeight="24"
+              Margin="8,0">
+      <DataGrid.Columns>
+
+        <DataGridTemplateColumn Header="Left" Width="3*" x:DataType="vm:CompareRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:CompareRowItem">
+              <Panel Margin="{Binding Depth, Converter={StaticResource DepthToMargin}}">
+                <StackPanel Orientation="Horizontal" IsVisible="{Binding HasLeft}">
+                  <Button Classes="expander" Content="{Binding ExpanderGlyph}"
+                          Command="{Binding $parent[UserControl].((vm:FolderCompareViewModel)DataContext).ToggleCommand}"
+                          CommandParameter="{Binding}" />
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                             TextDecorations="{Binding Status, Converter={StaticResource StatusDecoration}}" />
+                </StackPanel>
+                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasLeft}" Margin="20,0,0,0" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Size" Width="80" Binding="{Binding LeftSizeText}" x:DataType="vm:CompareRowItem" />
+        <DataGridTextColumn Header="Modified" Width="150" Binding="{Binding LeftModifiedText}" x:DataType="vm:CompareRowItem" />
+
+        <DataGridTemplateColumn Header="" Width="36" x:DataType="vm:CompareRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:CompareRowItem">
+              <TextBlock Text="{Binding StatusGlyph}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"
+                         Opacity="{Binding Status, Converter={StaticResource StatusOpacity}}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="Right" Width="3*" x:DataType="vm:CompareRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:CompareRowItem">
+              <Panel Margin="{Binding Depth, Converter={StaticResource DepthToMargin}}">
+                <StackPanel Orientation="Horizontal" IsVisible="{Binding HasRight}">
+                  <Button Classes="expander" Content="{Binding ExpanderGlyph}"
+                          Command="{Binding $parent[UserControl].((vm:FolderCompareViewModel)DataContext).ToggleCommand}"
+                          CommandParameter="{Binding}" />
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                             TextDecorations="{Binding Status, Converter={StaticResource StatusDecoration}}" />
+                </StackPanel>
+                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasRight}" Margin="20,0,0,0" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Size" Width="80" Binding="{Binding RightSizeText}" x:DataType="vm:CompareRowItem" />
+        <DataGridTextColumn Header="Modified" Width="150" Binding="{Binding RightModifiedText}" x:DataType="vm:CompareRowItem" />
+
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>
