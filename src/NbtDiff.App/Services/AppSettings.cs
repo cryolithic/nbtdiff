@@ -22,7 +22,12 @@ public sealed class AppSettings
     public bool CompoundOrderMatters { get; set; }
     public bool UseKeyedAligner { get; set; }
     public List<string> ExcludeGlobs { get; set; } = ["session.lock"];
+    /// <summary>Tag paths that are not content (default <c>LastUpdate</c>); an empty list ignores nothing.</summary>
+    public List<string> IgnoredTags { get; set; } = [.. TagIgnoreSet.DefaultPaths];
     public WindowPlacement? Window { get; set; }
+
+    [JsonIgnore]
+    public TagIgnoreSet IgnoreSet => TagIgnoreSet.Parse(IgnoredTags);
 
     /// <summary>Puts the pair first, dropping an earlier entry for the same pair and anything past <see cref="MaxRecent"/>.</summary>
     public void AddRecent(string left, string right)
@@ -33,7 +38,7 @@ public sealed class AppSettings
         if (RecentPairs.Count > MaxRecent) RecentPairs.RemoveRange(MaxRecent, RecentPairs.Count - MaxRecent);
     }
 
-    public CompareOptions ToCompareOptions() => new(DeepVerify, CompoundOrderMatters, ExcludeGlobs);
+    public CompareOptions ToCompareOptions() => new(DeepVerify, CompoundOrderMatters, ExcludeGlobs, IgnoredTags: IgnoredTags);
 
     /// <summary>Repairs anything a hand-edited or partial file left null or out of range.</summary>
     internal void Sanitize()
@@ -43,6 +48,8 @@ public sealed class AppSettings
         if (RecentPairs.Count > MaxRecent) RecentPairs.RemoveRange(MaxRecent, RecentPairs.Count - MaxRecent);
         ExcludeGlobs ??= ["session.lock"];
         ExcludeGlobs.RemoveAll(string.IsNullOrWhiteSpace);
+        IgnoredTags ??= [.. TagIgnoreSet.DefaultPaths];
+        IgnoredTags = TagIgnoreSet.Parse(IgnoredTags).Paths.ToList();
         if (Window is { } w && (w.Width < 200 || w.Height < 150 || double.IsNaN(w.Width) || double.IsNaN(w.Height)))
             Window = null;
     }

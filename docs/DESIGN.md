@@ -247,6 +247,16 @@ same walk order is used by the differ (`NbtCanonicalHasher.CanonicalChildren` is
 equal" and "diff empty" always agree — there is one test asserting exactly that over the fixture
 corpus.
 
+**Ignored tags.** Some tags are not content: `LastUpdate` is the world tick a chunk was last
+saved, and Minecraft rewrites it on every save even when nothing in the chunk changed, so without
+special handling every re-saved chunk is a "difference". `TagIgnoreSet` (a trie of `/`-joined
+compound-key paths; lists are transparent, `*` matches one key; default `LastUpdate` and
+`Level/LastUpdate` for pre-1.18 worlds) is applied identically by the hasher, the differ, and
+`RegionDiffer`, so the invariant above still holds. Ignored keys are left out of the child count
+too, so "present but ignored" equals "absent". The set is user-editable (`CompareOptions.IgnoredTags`,
+persisted in settings); only the deep tier can honour it, so a timestamp-only change shows as
+`ProbablyDifferent` until Tier 2 clears it.
+
 ### 4.4 Directory scan (as shipped in S3)
 
 ```csharp
@@ -425,7 +435,9 @@ Folder colour follows S3's derived folder status.
 
 Toolbar: left/right path boxes, Browse (via `IDialogService` over `IStorageProvider`),
 Compare/Cancel, filter chips (All / Differences / Same / Orphans — "Differences" hides `Pending`),
-Deep-verify toggle, Export text / Export JSON (`DiffReport.ToString` to a save-picker path).
+Deep-verify toggle, an "Ignore tags" box (comma-separated `TagIgnoreSet` paths, persisted, applied on
+the next compare and by the file/chunk views), Export text / Export JSON (`DiffReport.ToString` to a
+save-picker path). The `Fingerprinter` is built per compare so edited options take effect.
 Status bar: `3 differ · 4 same · 1 left-only · 2 right-only · 1 error · scanning region/ (43%)`
 — the "scanning" directory is the parent of the last changed file (S3 exposes no current dir).
 
@@ -464,7 +476,10 @@ before/after. Scalars render through `SnbtWriter.WriteValue` (bytes signed), str
 with full text in the tooltip, arrays as `int[4096] · differs at [17]`; selecting an array row
 shows a detail pane of ±16 elements around `ArrayDifference.FirstDifference` (index 0 for
 identical/one-sided arrays) with the differing index highlighted. Title shows the pair
-(file names, or `r.0.0.mca (3, 1)`). Both grids take keyboard focus on `Loaded` — without that
+(file names, or `r.0.0.mca (3, 1)`). A chunk view opened from the region grid also carries a
+`ChunkNavigation` — the region's changed chunks in (z, x) order — so Ctrl+F8 / Ctrl+F7 (Next /
+Previous chunk) reload the view in place with the next changed chunk, wrapping at both ends, with a
+"changed chunk n of m" label; the grid's selection follows, and the window title updates. Both grids take keyboard focus on `Loaded` — without that
 F7/F8/arrows/Enter are dead.
 
 ### 5.4 Startup (as shipped)

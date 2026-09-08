@@ -4,15 +4,18 @@ namespace NbtDiff.Core;
 /// <param name="CompoundOrderMatters">Treat reordered compound keys as a difference.</param>
 /// <param name="ExcludeGlobs">Patterns to skip; null means the default (<c>session.lock</c>). See <see cref="GlobMatcher"/>.</param>
 /// <param name="MaxParallelism">Worker count; 0 uses the processor count.</param>
+/// <param name="IgnoredTags">Tag paths that are not content (see <see cref="TagIgnoreSet"/>); null means <see cref="TagIgnoreSet.DefaultPaths"/> (<c>LastUpdate</c>).</param>
 public sealed record CompareOptions(
     bool DeepVerify = true,
     bool CompoundOrderMatters = false,
     IReadOnlyList<string>? ExcludeGlobs = null,
-    int MaxParallelism = 0)
+    int MaxParallelism = 0,
+    IReadOnlyList<string>? IgnoredTags = null)
 {
     public static readonly IReadOnlyList<string> DefaultExcludes = ["session.lock"];
 
     public IReadOnlyList<string> EffectiveExcludes => ExcludeGlobs ?? DefaultExcludes;
+    public TagIgnoreSet EffectiveIgnoredTags => IgnoredTags is null ? TagIgnoreSet.Default : TagIgnoreSet.Parse(IgnoredTags);
     public int EffectiveParallelism => MaxParallelism > 0 ? MaxParallelism : Environment.ProcessorCount;
 }
 

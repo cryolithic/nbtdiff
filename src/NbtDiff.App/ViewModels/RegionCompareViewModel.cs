@@ -129,9 +129,16 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
     {
         var cell = Grid.Selected;
         if (cell is not { IsPresent: true } || IsDisposed) return;
-        var vm = new FileCompareViewModel(new ChunkDiffSource(_left, _right, cell.X, cell.Z, Title), _ui, _settings);
+        var vm = new FileCompareViewModel(new ChunkDiffSource(_left, _right, cell.X, cell.Z, Title), _ui, _settings, ChangedChunkNavigation());
         _ = vm.Load();
         NavigationRequested?.Invoke(vm);
+    }
+
+    /// <summary>Every present, non-Same cell in (z, x) order — what Next/Previous chunk step through; the grid selection follows.</summary>
+    private ChunkNavigation ChangedChunkNavigation()
+    {
+        var changed = Grid.Cells.Where(c => c.IsPresent && c.Status != ChunkDiffStatus.Same).Select(c => (c.X, c.Z)).ToList();
+        return new ChunkNavigation(changed, (x, z) => new ChunkDiffSource(_left, _right, x, z, Title), (x, z) => Grid.Select(x, z));
     }
 
     [RelayCommand]

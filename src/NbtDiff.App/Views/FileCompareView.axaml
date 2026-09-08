@@ -14,6 +14,8 @@
   <UserControl.KeyBindings>
     <KeyBinding Gesture="F7" Command="{Binding PreviousChangeCommand}" />
     <KeyBinding Gesture="F8" Command="{Binding NextChangeCommand}" />
+    <KeyBinding Gesture="Ctrl+F8" Command="{Binding NextChunkCommand}" />
+    <KeyBinding Gesture="Ctrl+F7" Command="{Binding PreviousChunkCommand}" />
   </UserControl.KeyBindings>
 
   <UserControl.Styles>
@@ -49,7 +51,7 @@
 
     <!-- Toolbar -->
     <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
-      <StackPanel Orientation="Horizontal" Spacing="8">
+      <WrapPanel ItemSpacing="8" LineSpacing="4">
         <CheckBox Content="Show unchanged" IsChecked="{Binding ShowUnchanged}" />
         <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
         <CheckBox Content="Key order matters" IsChecked="{Binding CompoundOrderMatters}"
@@ -59,10 +61,16 @@
         <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
         <Button Content="◀ Previous change (F7)" Command="{Binding PreviousChangeCommand}" />
         <Button Content="Next change (F8) ▶" Command="{Binding NextChangeCommand}" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" IsVisible="{Binding HasChunkNavigation}" />
+        <Button Content="◀ Prev chunk (Ctrl+F7)" Command="{Binding PreviousChunkCommand}" IsVisible="{Binding HasChunkNavigation}"
+                ToolTip.Tip="Step to the previous changed chunk of this region" />
+        <Button Content="Next chunk (Ctrl+F8) ▶" Command="{Binding NextChunkCommand}" IsVisible="{Binding HasChunkNavigation}"
+                ToolTip.Tip="Step to the next changed chunk of this region" />
+        <TextBlock Text="{Binding ChunkPositionText}" VerticalAlignment="Center" IsVisible="{Binding HasChunkNavigation}" Opacity="0.7" />
         <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
         <Button Content="Expand all" Command="{Binding ExpandAllCommand}" />
         <Button Content="Collapse all" Command="{Binding CollapseAllCommand}" />
-      </StackPanel>
+      </WrapPanel>
       <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
       <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" FontFamily="Consolas,monospace" />
     </StackPanel>

@@ -15,7 +15,7 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
 
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
-    private readonly IFingerprinter _fingerprinter;
+    private readonly IFingerprinter? _injectedFingerprinter;
     private readonly ISettingsService _settings;
     private readonly ChangeCoalescer<CompareRow> _changes = new();
 
@@ -44,6 +44,8 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     [ObservableProperty] private string _leftPath = "";
     [ObservableProperty] private string _rightPath = "";
     [ObservableProperty] private bool _deepVerify = true;
+    /// <summary>Comma-separated tag paths that are not content (persisted). Applies to the next compare and to file/chunk views.</summary>
+    [ObservableProperty] private string _ignoredTagsText = "";
     [ObservableProperty] private RowFilter _filter = RowFilter.All;
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(CompareCommand), nameof(CancelCommand), nameof(ExportCommand))] private bool _isScanning;
     [ObservableProperty] private string _statusText = "Choose two folders and press Compare.";
@@ -65,8 +67,9 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         _dialogs = dialogs;
         _ui = ui;
         _settings = settings ?? new SettingsService(null);
-        _fingerprinter = fingerprinter ?? new Fingerprinter(_settings.Current.CompoundOrderMatters);
+        _injectedFingerprinter = fingerprinter;
         _deepVerify = _settings.Current.DeepVerify;
+        _ignoredTagsText = string.Join(", ", _settings.Current.IgnoredTags);
         RefreshRecent();
     }
 
@@ -80,6 +83,12 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     partial void OnDeepVerifyChanged(bool value)
     {
         _settings.Current.DeepVerify = value;
+        _settings.Save();
+    }
+
+    partial void OnIgnoredTagsTextChanged(string value)
+    {
+        _settings.Current.IgnoredTags = TagIgnoreSet.ParseList(value).Paths.ToList();
         _settings.Save();
     }
 
@@ -115,7 +124,8 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         try
         {
             var options = _settings.Current.ToCompareOptions() with { DeepVerify = DeepVerify };
-            var comparer = new DirectoryComparer(_fingerprinter, options);
+            // Built per compare so edited ignore tags / key-order settings take effect without a restart.
+            var comparer = new DirectoryComparer(_injectedFingerprinter ?? new Fingerprinter(options.CompoundOrderMatters, options.EffectiveIgnoredTags), options);
             root = comparer.Prepare(left, right);
         }
         catch (Exception e)

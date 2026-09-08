@@ -4,10 +4,12 @@ namespace NbtDiff.Core;
 
 /// <param name="CompoundOrderMatters">Report a compound whose keys are reordered (children get <see cref="DiffKind.Moved"/>). Must match the hasher's setting for hash/diff agreement.</param>
 /// <param name="ListAligner">How list items are paired; null means <see cref="IndexAligner"/>.</param>
-public sealed record DiffOptions(bool CompoundOrderMatters = false, IListAligner? ListAligner = null)
+/// <param name="IgnoredTags">Tag paths left out of the diff entirely; null means <see cref="TagIgnoreSet.Default"/>. Must match the hasher's set for hash/diff agreement.</param>
+public sealed record DiffOptions(bool CompoundOrderMatters = false, IListAligner? ListAligner = null, TagIgnoreSet? IgnoredTags = null)
 {
     public static readonly DiffOptions Default = new();
     public IListAligner Aligner => ListAligner ?? IndexAligner.Instance;
+    public TagIgnoreSet Ignored => IgnoredTags ?? TagIgnoreSet.Default;
 }
 
 /// <summary>Pairs items of two lists. A null index on one side means the item exists only on the other.</summary>

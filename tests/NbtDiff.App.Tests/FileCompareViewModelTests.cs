@@ -301,4 +301,78 @@ public class FileCompareViewModelTests
         Assert.Equal(202, byPath["s"].LeftToolTip!.Length);   // quotes + 200 chars
         Assert.Equal([0, 1, 2, 3, 4], root.Descendants().Select(i => i.DfsIndex));
     }
+    [Fact]
+    public async Task NoNavigation_CommandsDisabled()
+    {
+        var (l, r) = Sample();
+        var vm = await Loaded(l, r);
+        Assert.False(vm.HasChunkNavigation);
+        Assert.Null(vm.Navigation);
+        Assert.Equal("", vm.ChunkPositionText);
+        Assert.False(vm.NextChunkCommand.CanExecute(null));
+        Assert.False(vm.PreviousChunkCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ChunkNavigation_StepsInOrderWrapsAndMovesGrid()
+    {
+        var (l, r) = Sample();
+        var sources = new Dictionary<(int, int), IDiffSource>
+        {
+            [(1, 0)] = new TagPairSource("c(1,0)", l, r),
+            [(5, 0)] = new TagPairSource("c(5,0)", l, l),   // identical pair
+            [(2, 1)] = new TagPairSource("c(2,1)", l, r),
+        };
+        var moved = new List<(int, int)>();
+        var nav = new ChunkNavigation([(1, 0), (5, 0), (2, 1)], (x, z) => sources[(x, z)], (x, z) => moved.Add((x, z)));
+
+        var vm = new FileCompareViewModel(new TagPairSource("start", l, r), new ImmediateUiDispatcher(), navigation: nav);
+        await vm.Load().WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.True(vm.HasChunkNavigation);
+        Assert.Equal("", vm.ChunkPositionText);   // "start" is not one of the changed chunks
+
+        var titles = new List<string>();
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.Title)) titles.Add(vm.Title); };
+
+        async Task Step(bool next)
+        {
+            (next ? vm.NextChunkCommand : vm.PreviousChunkCommand).Execute(null);
+            await vm.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+
+        await Step(next: true);
+        Assert.Equal("c(1,0)", vm.Title);
+        Assert.Equal("changed chunk 1 of 3", vm.ChunkPositionText);
+        Assert.Single(vm.ChangedNodes, n => n.Path == "a/y");
+
+        await Step(next: true);
+        Assert.Equal("c(5,0)", vm.Title);
+        Assert.Empty(vm.ChangedNodes);
+        Assert.True(vm.ShowUnchanged);   // identical pair shows the whole tree
+
+        await Step(next: true);
+        Assert.Equal("c(2,1)", vm.Title);
+        Assert.Equal("changed chunk 3 of 3", vm.ChunkPositionText);
+
+        await Step(next: true);           // wraps
+        Assert.Equal("c(1,0)", vm.Title);
+
+        await Step(next: false);          // wraps the other way
+        Assert.Equal("c(2,1)", vm.Title);
+
+        Assert.Equal([(1, 0), (5, 0), (2, 1), (1, 0), (2, 1)], moved);
+        Assert.Equal(["c(1,0)", "c(5,0)", "c(2,1)", "c(1,0)", "c(2,1)"], titles);
+    }
+
+    [Fact]
+    public async Task ChunkNavigation_EmptyList_IsInert()
+    {
+        var (l, r) = Sample();
+        var vm = new FileCompareViewModel(new TagPairSource("x", l, r), new ImmediateUiDispatcher(),
+            navigation: new ChunkNavigation([], (_, _) => throw new InvalidOperationException()));
+        await vm.Load().WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.False(vm.HasChunkNavigation);
+        vm.NextChunkCommand.Execute(null);
+        Assert.Equal("x", vm.Title);
+    }
 }

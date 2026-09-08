@@ -13,9 +13,17 @@ namespace NbtDiff.App.ViewModels;
 /// pre-order with wrap-around: Next from the last change goes to the first, Previous from the first
 /// goes to the last.
 /// </summary>
+/// <summary>
+/// Lets a chunk view step to the other changed chunks of its region without returning to the grid.
+/// <paramref name="Chunks"/> is in (z, x) order; <paramref name="Moved"/> lets the grid follow the selection.
+/// </summary>
+public sealed record ChunkNavigation(IReadOnlyList<(int X, int Z)> Chunks, Func<int, int, IDiffSource> SourceFor, Action<int, int>? Moved = null);
+
 public sealed partial class FileCompareViewModel : ViewModelBase
 {
-    private readonly IDiffSource _source;
+    private IDiffSource _source;
+    private readonly ChunkNavigation? _navigation;
+    private int _chunkIndex = -1;
     private readonly IUiDispatcher _ui;
     private TagPair? _tags;
     private DiffNodeItem? _root;
@@ -46,16 +54,71 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     private readonly ISettingsService _settings;
 
     /// <param name="settings">Seeds and persists the compare toggles; null keeps them in memory.</param>
-    public FileCompareViewModel(IDiffSource source, IUiDispatcher ui, ISettingsService? settings = null)
+    /// <param name="navigation">Sibling chunks reachable with Next/Previous chunk; null for standalone files.</param>
+    public FileCompareViewModel(IDiffSource source, IUiDispatcher ui, ISettingsService? settings = null, ChunkNavigation? navigation = null)
     {
         _source = source;
         _ui = ui;
         _settings = settings ?? new SettingsService(null);
+        _navigation = navigation;
         _compoundOrderMatters = _settings.Current.CompoundOrderMatters;
         _useKeyedAligner = _settings.Current.UseKeyedAligner;
+        if (navigation is not null && source is ChunkDiffSource c)
+            _chunkIndex = IndexOf(navigation.Chunks, c.X, c.Z);
     }
 
-    public DiffOptions Options => new(CompoundOrderMatters, UseKeyedAligner ? KeyedAligner.Default : null);
+    /// <summary>Tag paths excluded from the diff come from settings (the folder view edits them).</summary>
+    public DiffOptions Options => new(CompoundOrderMatters, UseKeyedAligner ? KeyedAligner.Default : null, _settings.Current.IgnoreSet);
+
+    public bool HasChunkNavigation => _navigation is { Chunks.Count: > 0 };
+    public ChunkNavigation? Navigation => _navigation;
+    /// <summary>Position among the region's changed chunks, e.g. "changed chunk 2 of 7"; empty when the current chunk is not one of them.</summary>
+    public string ChunkPositionText => _navigation is null || _chunkIndex < 0 ? "" : $"changed chunk {_chunkIndex + 1} of {_navigation.Chunks.Count}";
+
+    [RelayCommand(CanExecute = nameof(HasChunkNavigation))]
+    private void NextChunk() => StepChunk(+1);
+
+    [RelayCommand(CanExecute = nameof(HasChunkNavigation))]
+    private void PreviousChunk() => StepChunk(-1);
+
+    // Wraps at both ends. From a chunk that is not in the list (the user opened an unchanged one),
+    // Next goes to the first changed chunk after it in (z, x) order and Previous to the last before it.
+    private void StepChunk(int direction)
+    {
+        if (_navigation is null || _navigation.Chunks.Count == 0) return;
+        var chunks = _navigation.Chunks;
+        int n = chunks.Count;
+        int target;
+        if (_chunkIndex >= 0)
+            target = (_chunkIndex + direction + n) % n;
+        else if (_source is ChunkDiffSource c)
+        {
+            long here = Order(c.X, c.Z);
+            target = direction > 0
+                ? Enumerable.Range(0, n).FirstOrDefault(i => Order(chunks[i].X, chunks[i].Z) > here, 0)
+                : Enumerable.Range(0, n).LastOrDefault(i => Order(chunks[i].X, chunks[i].Z) < here, n - 1);
+        }
+        else
+            target = direction > 0 ? 0 : n - 1;
+
+        _chunkIndex = target;
+        var (x, z) = chunks[target];
+        _source = _navigation.SourceFor(x, z);
+        _tags = null;
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(ChunkPositionText));
+        _navigation.Moved?.Invoke(x, z);
+        _ = Load();
+    }
+
+    private static long Order(int x, int z) => (long)z * RegionCoords.ChunksPerAxis + x;
+
+    private static int IndexOf(IReadOnlyList<(int X, int Z)> chunks, int x, int z)
+    {
+        for (int i = 0; i < chunks.Count; i++)
+            if (chunks[i].X == x && chunks[i].Z == z) return i;
+        return -1;
+    }
 
     /// <summary>Loads both sides and diffs them. Safe to call once; option changes re-diff automatically.</summary>
     public Task Load() => Run(() =>

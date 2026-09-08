@@ -6,8 +6,10 @@ using NbtDiff.Nbt;
 namespace NbtDiff.Core;
 
 /// <summary>Default <see cref="IFingerprinter"/> over the local file system.</summary>
-public sealed class Fingerprinter(bool compoundOrderMatters = false) : IFingerprinter
+/// <param name="ignoredTags">Tag paths excluded from deep hashes; null means <see cref="TagIgnoreSet.Default"/>.</param>
+public sealed class Fingerprinter(bool compoundOrderMatters = false, TagIgnoreSet? ignoredTags = null) : IFingerprinter
 {
+    private readonly TagIgnoreSet _ignored = ignoredTags ?? TagIgnoreSet.Default;
     private const int FileBufferSize = 1 << 16;
     private static readonly ArrayPool<byte> ChunkPool = ArrayPool<byte>.Create(ChunkRef.MaxInlinePayload, maxArraysPerBucket: 64);
 
@@ -45,7 +47,7 @@ public sealed class Fingerprinter(bool compoundOrderMatters = false) : IFingerpr
                     var doc = NbtDocument.Load(path);
                     if (!doc.Ok) return LoadResult<FileFingerprint>.Fail(doc.Failure!);
                     ct.ThrowIfCancellationRequested();
-                    ulong hash = NbtCanonicalHasher.Hash(doc.Value!.Root, compoundOrderMatters);
+                    ulong hash = NbtCanonicalHasher.Hash(doc.Value!.Root, compoundOrderMatters, _ignored);
                     return LoadResult<FileFingerprint>.Success(new FileFingerprint(kind, FingerprintTier.Deep, new FileInfo(path).Length, hash));
                 }
 
@@ -105,7 +107,7 @@ public sealed class Fingerprinter(bool compoundOrderMatters = false) : IFingerpr
                     if (!nbt.Ok)
                         errors[(chunk.X, chunk.Z)] = nbt.Failure!.ToShortString();
                     else
-                        hashes[(chunk.X, chunk.Z)] = NbtCanonicalHasher.Hash(nbt.Value!, compoundOrderMatters);
+                        hashes[(chunk.X, chunk.Z)] = NbtCanonicalHasher.Hash(nbt.Value!, compoundOrderMatters, _ignored);
                 }
             }
         }

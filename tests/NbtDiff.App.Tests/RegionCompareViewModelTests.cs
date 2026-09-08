@@ -157,4 +157,36 @@ public class RegionCompareViewModelTests
         File.Delete(Region(l.Path));   // would throw on Windows if the handle were still open
         Assert.False(File.Exists(Region(l.Path)));
     }
+    [Fact]
+    public async Task OpenSelected_ProvidesChangedChunkNavigation()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        Base().Write(l.Path);
+        Base().Mutate(m =>
+        {
+            m.Chunk(0, 0, 3, 1).SetPath("InhabitedTime", 999L);
+            m.Chunk(0, 0, 7, 0).SetPath("InhabitedTime", 5L);
+        }).Write(r.Path);
+        using var vm = await Loaded(Region(l.Path), Region(r.Path));
+        Assert.Equal((7, 0), (vm.Grid.Selected!.X, vm.Grid.Selected.Z));   // first changed cell in (z, x) order
+
+        ViewModelBase? pushed = null;
+        vm.NavigationRequested += v => pushed = v;
+        vm.OpenSelectedCommand.Execute(null);
+        var chunk = Assert.IsType<FileCompareViewModel>(pushed);
+        await chunk.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.True(chunk.HasChunkNavigation);
+        Assert.Equal([(7, 0), (3, 1)], chunk.Navigation!.Chunks);
+        Assert.Equal("changed chunk 1 of 2", chunk.ChunkPositionText);
+
+        chunk.NextChunkCommand.Execute(null);
+        await chunk.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal("r.0.0.mca (3, 1)", chunk.Title);
+        Assert.Equal("changed chunk 2 of 2", chunk.ChunkPositionText);
+        Assert.Equal((3, 1), (vm.Grid.Selected!.X, vm.Grid.Selected.Z));   // grid follows
+        Assert.Equal("InhabitedTime", Assert.Single(chunk.ChangedNodes).Path);
+        Assert.Equal("999L", chunk.ChangedNodes[0].RightValueText);
+    }
 }

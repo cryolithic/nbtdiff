@@ -34,7 +34,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public void Push(ViewModelBase vm)
     {
         _stack.Add(vm);
+        vm.PropertyChanged += OnCurrentTitleChanged;
         Current = vm;
+    }
+
+    // A chunk view changes its Title when stepping between chunks; keep the window title in step.
+    private void OnCurrentTitleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModelBase.Title) && ReferenceEquals(sender, Current))
+            OnPropertyChanged(nameof(WindowTitle));
     }
 
     /// <summary>Pops the current view. The view below keeps its state (a folder scan is not restarted); the popped view is disposed if it owns resources.</summary>
@@ -43,6 +51,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_stack.Count <= 1) return;
         var popped = _stack[^1];
+        popped.PropertyChanged -= OnCurrentTitleChanged;
         _stack.RemoveAt(_stack.Count - 1);
         Current = _stack[^1];
         (popped as IDisposable)?.Dispose();

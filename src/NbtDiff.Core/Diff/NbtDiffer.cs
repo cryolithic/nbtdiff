@@ -11,13 +11,15 @@ public static class NbtDiffer
     public static DiffNode Diff(NbtTag? left, NbtTag? right, DiffOptions? options = null)
     {
         if (left is null && right is null) throw new ArgumentException("At least one side must be present");
-        return Build("", "", left, right, options ?? DiffOptions.Default);
+        var o = options ?? DiffOptions.Default;
+        return Build("", "", left, right, o, o.Ignored.Root);
     }
 
-    private static DiffNode Build(string name, string path, NbtTag? left, NbtTag? right, DiffOptions o)
+    // `ig` is the ignore-trie node for this tag; lists pass it through unchanged, compounds descend per key.
+    private static DiffNode Build(string name, string path, NbtTag? left, NbtTag? right, DiffOptions o, TagIgnoreSet.Node? ig)
     {
-        if (left is null) return OneSided(name, path, right!, DiffKind.Added);
-        if (right is null) return OneSided(name, path, left, DiffKind.Removed);
+        if (left is null) return OneSided(name, path, right!, DiffKind.Added, ig);
+        if (right is null) return OneSided(name, path, left, DiffKind.Removed, ig);
         if (left.TagType != right.TagType) return new DiffNode(name, path, left, right, DiffKind.TypeChanged, []);
 
         // Children are matched by key, so only the root can differ in name (null vs "" included).
@@ -26,7 +28,7 @@ public static class NbtDiffer
         switch (left)
         {
             case NbtCompound lc:
-                return new DiffNode(name, path, left, right, kind, CompoundChildren(path, lc, (NbtCompound)right, o));
+                return new DiffNode(name, path, left, right, kind, CompoundChildren(path, lc, (NbtCompound)right, o, ig));
 
             case NbtList ll:
             {
@@ -38,7 +40,7 @@ public static class NbtDiffer
                 foreach (var (li, ri) in o.Aligner.Align(ll, rl))
                 {
                     string childName = $"[{li ?? ri}]";
-                    children.Add(Build(childName, Join(path, childName), li is int l ? ll[l] : null, ri is int r ? rl[r] : null, o));
+                    children.Add(Build(childName, Join(path, childName), li is int l ? ll[l] : null, ri is int r ? rl[r] : null, o, ig));
                 }
                 return new DiffNode(name, path, left, right, kind, children);
             }
@@ -55,7 +57,7 @@ public static class NbtDiffer
         }
     }
 
-    private static List<DiffNode> CompoundChildren(string path, NbtCompound lc, NbtCompound rc, DiffOptions o)
+    private static List<DiffNode> CompoundChildren(string path, NbtCompound lc, NbtCompound rc, DiffOptions o, TagIgnoreSet.Node? ig)
     {
         var children = new List<DiffNode>(Math.Max(lc.Count, rc.Count));
         if (!o.CompoundOrderMatters)
@@ -64,7 +66,10 @@ public static class NbtDiffer
             var keys = new SortedSet<string>(lc.Names, StringComparer.Ordinal);
             keys.UnionWith(rc.Names);
             foreach (var key in keys)
-                children.Add(Build(key, Join(path, key), lc.Get(key), rc.Get(key), o));
+            {
+                if (ig?.Ignores(key) == true) continue;
+                children.Add(Build(key, Join(path, key), lc.Get(key), rc.Get(key), o, ig?.Child(key)));
+            }
             return children;
         }
 
@@ -73,12 +78,13 @@ public static class NbtDiffer
         // ranking over common keys only keeps an insertion from flagging every later sibling.
         var rightRank = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var t in rc.Tags)
-            if (lc.Contains(t.Name!)) rightRank[t.Name!] = rightRank.Count;
+            if (lc.Contains(t.Name!) && ig?.Ignores(t.Name) != true) rightRank[t.Name!] = rightRank.Count;
         int leftRank = 0;
         foreach (var l in lc.Tags)
         {
+            if (ig?.Ignores(l.Name) == true) continue;
             var r = rc.Get(l.Name!);
-            var node = Build(l.Name!, Join(path, l.Name!), l, r, o);
+            var node = Build(l.Name!, Join(path, l.Name!), l, r, o, ig?.Child(l.Name));
             if (r is not null)
             {
                 bool moved = rightRank[l.Name!] != leftRank++;
@@ -88,23 +94,26 @@ public static class NbtDiffer
             children.Add(node);
         }
         foreach (var r in rc.Tags)
-            if (!lc.Contains(r.Name!))
-                children.Add(Build(r.Name!, Join(path, r.Name!), null, r, o));
+            if (!lc.Contains(r.Name!) && ig?.Ignores(r.Name) != true)
+                children.Add(Build(r.Name!, Join(path, r.Name!), null, r, o, ig?.Child(r.Name)));
         return children;
     }
 
-    private static DiffNode OneSided(string name, string path, NbtTag tag, DiffKind kind)
+    private static DiffNode OneSided(string name, string path, NbtTag tag, DiffKind kind, TagIgnoreSet.Node? ig)
     {
         var children = new List<DiffNode>();
         switch (tag)
         {
             case NbtCompound c:
                 foreach (var child in c.Tags)
-                    children.Add(OneSided(child.Name!, Join(path, child.Name!), child, kind));
+                {
+                    if (ig?.Ignores(child.Name) == true) continue;
+                    children.Add(OneSided(child.Name!, Join(path, child.Name!), child, kind, ig?.Child(child.Name)));
+                }
                 break;
             case NbtList l:
                 for (int i = 0; i < l.Count; i++)
-                    children.Add(OneSided($"[{i}]", Join(path, $"[{i}]"), l[i], kind));
+                    children.Add(OneSided($"[{i}]", Join(path, $"[{i}]"), l[i], kind, ig));
                 break;
         }
         return kind == DiffKind.Added

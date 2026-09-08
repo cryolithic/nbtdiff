@@ -13,10 +13,11 @@ namespace NbtDiff.Core;
 /// </summary>
 public static class NbtCanonicalHasher
 {
-    public static ulong Hash(NbtTag tag, bool compoundOrderMatters = false)
+    /// <param name="ignoredTags">Compound keys to skip (default <see cref="TagIgnoreSet.Default"/>); pass <see cref="TagIgnoreSet.Empty"/> to hash everything.</param>
+    public static ulong Hash(NbtTag tag, bool compoundOrderMatters = false, TagIgnoreSet? ignoredTags = null)
     {
         var h = new XxHash64();
-        Append(h, tag, compoundOrderMatters);
+        Append(h, tag, compoundOrderMatters, (ignoredTags ?? TagIgnoreSet.Default).Root);
         return h.GetCurrentHashAsUInt64();
     }
 
@@ -24,7 +25,7 @@ public static class NbtCanonicalHasher
     public static IEnumerable<NbtTag> CanonicalChildren(NbtCompound compound, bool compoundOrderMatters = false) =>
         compoundOrderMatters ? compound.Tags : compound.Tags.OrderBy(t => t.Name, StringComparer.Ordinal);
 
-    private static void Append(XxHash64 h, NbtTag tag, bool ordered)
+    private static void Append(XxHash64 h, NbtTag tag, bool ordered, TagIgnoreSet.Node? ignore)
     {
         Span<byte> scratch = stackalloc byte[8];
         scratch[0] = (byte)tag.TagType;
@@ -79,13 +80,20 @@ public static class NbtCanonicalHasher
                 h.Append(scratch[..1]);
                 AppendLength(h, list.Count);
                 foreach (var item in list)
-                    Append(h, item, ordered);
+                    Append(h, item, ordered, ignore);   // lists are transparent to ignore paths
                 break;
             case NbtCompound compound:
-                AppendLength(h, compound.Count);
-                foreach (var child in CanonicalChildren(compound, ordered))
-                    Append(h, child, ordered);
+            {
+                // Ignored keys are left out of the count as well, so "present but ignored" equals "absent".
+                var kept = ignore is null
+                    ? CanonicalChildren(compound, ordered)
+                    : CanonicalChildren(compound, ordered).Where(c => !ignore.Ignores(c.Name));
+                var children = kept as IReadOnlyCollection<NbtTag> ?? kept.ToList();
+                AppendLength(h, children.Count);
+                foreach (var child in children)
+                    Append(h, child, ordered, ignore?.Child(child.Name));
                 break;
+            }
             default:
                 throw new NotSupportedException($"Tag type {tag.TagType}");
         }

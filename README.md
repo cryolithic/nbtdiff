@@ -32,10 +32,15 @@ verified · blue = left only · purple = right only · struck through = unreadab
 | `→` / `←` | expand / collapse | move selection | expand / collapse |
 | `↑` `↓` | move | move selection | move |
 | `F8` / `F7` | — | — | next / previous change (wraps) |
+| `Ctrl+F8` / `Ctrl+F7` | — | — | next / previous changed chunk of the region (chunk views only) |
 | `◀ Back` button | | return to the previous view; a folder scan keeps its state | |
 
+Chunks re-saved by Minecraft with only their `LastUpdate` tick changed are not differences: the
+"Ignore tags" box lists tag paths that are not content (default `LastUpdate, Level/LastUpdate`;
+add `InhabitedTime` if you want that ignored too).
+
 Options (deep verify, key-order sensitivity, matching list items by UUID/id, exclude globs,
-window placement, recent pairs) persist in `%APPDATA%\nbtdiff\settings.json` on Windows and
+ignored tags, window placement, recent pairs) persist in `%APPDATA%\nbtdiff\settings.json` on Windows and
 `~/.config/nbtdiff/settings.json` on Linux.
 
 ## Build

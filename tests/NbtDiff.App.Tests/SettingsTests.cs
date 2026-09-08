@@ -23,7 +23,7 @@ public class SettingsTests
     {
         using var d = new TempDir();
         var store = new SettingsStore(d.File(Path.Combine("nested", "dir", "settings.json")));
-        var s = new AppSettings { DeepVerify = false, CompoundOrderMatters = true, UseKeyedAligner = true, ExcludeGlobs = ["session.lock", "*.log"] };
+        var s = new AppSettings { DeepVerify = false, CompoundOrderMatters = true, UseKeyedAligner = true, ExcludeGlobs = ["session.lock", "*.log"], IgnoredTags = ["LastUpdate", "Level/LastUpdate", "InhabitedTime"] };
         s.AddRecent(@"C:\a", @"C:\b");
         s.Window = new WindowPlacement(10, 20, 800, 600, false);
 
@@ -34,6 +34,8 @@ public class SettingsTests
         Assert.True(back.CompoundOrderMatters);
         Assert.True(back.UseKeyedAligner);
         Assert.Equal(["session.lock", "*.log"], back.ExcludeGlobs);
+        Assert.Equal(["LastUpdate", "Level/LastUpdate", "InhabitedTime"], back.IgnoredTags);
+        Assert.True(back.IgnoreSet.Root!.Ignores("InhabitedTime"));
         Assert.Equal([new RecentPair(@"C:\a", @"C:\b")], back.RecentPairs);
         Assert.Equal(new WindowPlacement(10, 20, 800, 600, false), back.Window);
         Assert.False(File.Exists(store.Path + ".tmp"));

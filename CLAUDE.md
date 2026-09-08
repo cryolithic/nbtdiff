@@ -182,6 +182,11 @@ Things discovered while building that are not visible from the code. Append here
 - 2026-09-08: real worlds contain 0-byte `.mca` files. `RegionFile.Open` treats them as empty
   regions (not errors) so they compare `Same`; only 1..8191-byte files are "truncated".
 
+- 2026-09-08: chunk NBT carries `LastUpdate` (save tick), rewritten on every save. It is ignored
+  by default through `TagIgnoreSet` (hasher, differ, region differ all consult the same set —
+  DESIGN §4.3). `InhabitedTime` is *not* ignored (it only moves when players are nearby); users
+  can add it in the "Ignore tags" box.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).
