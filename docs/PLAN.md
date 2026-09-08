@@ -104,6 +104,11 @@ nullable-until-read and `ReadCompressedPayload` returns `LoadResult<byte[]>`. DE
 
 ## S2 — Classification and fingerprinting
 
+**Status:** done 2026-09-08. Deviations: classifier is extension-only (no sniffing);
+`IFingerprinter` returns `LoadResult<FileFingerprint>` and carries `Tier` + per-chunk `ChunkErrors`;
+`ChunkRef` gained a scratch-buffer `ReadCompressedPayload(byte[]?)` + `ParseNbt(ChunkPayload)`.
+DESIGN §4.1–4.3 updated.
+
 **Needs:** S1.
 
 **Produces** in `src/NbtDiff.Core/`

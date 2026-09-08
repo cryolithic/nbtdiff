@@ -1,7 +1,12 @@
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using fNbt;
 
 namespace NbtDiff.Nbt;
+
+/// <param name="Bytes">Compressed bytes; may alias a caller-supplied scratch buffer.</param>
+/// <param name="Scheme">Compression scheme byte with the external flag stripped.</param>
+public sealed record ChunkPayload(ReadOnlyMemory<byte> Bytes, byte Scheme, bool IsExternal);
 
 /// <summary>
 /// One occupied slot of a <see cref="RegionFile"/>. Constructed from the header alone; nothing past
@@ -60,25 +65,40 @@ public sealed class ChunkRef
     /// The still-compressed payload: for inline chunks the bytes after the 5-byte prefix; for external
     /// chunks the whole <c>.mcc</c> file. Cheap relative to <see cref="ReadNbt"/> — no decompression.
     /// </summary>
-    public LoadResult<byte[]> ReadCompressedPayload()
+    public LoadResult<byte[]> ReadCompressedPayload() =>
+        ReadCompressedPayload(scratch: null).Map(p =>
+            MemoryMarshal.TryGetArray(p.Bytes, out var segment) && segment.Offset == 0 && segment.Count == segment.Array!.Length
+                ? segment.Array
+                : p.Bytes.ToArray());
+
+    /// <summary>
+    /// Same as <see cref="ReadCompressedPayload()"/> but reads into <paramref name="scratch"/> when it is
+    /// large enough (inline chunks are at most <see cref="MaxInlinePayload"/> bytes), so a scan can reuse
+    /// one buffer per worker. The returned memory aliases the scratch buffer in that case.
+    /// </summary>
+    public LoadResult<ChunkPayload> ReadCompressedPayload(byte[]? scratch)
     {
         if (HeaderError is not null)
-            return LoadResult<byte[]>.Fail($"Chunk ({X}, {Z}): {HeaderError}");
+            return LoadResult<ChunkPayload>.Fail($"Chunk ({X}, {Z}): {HeaderError}");
         try
         {
             ReadPrefix();
+            byte scheme = (byte)(_schemeByte & ~ExternalFlag);
             if ((_schemeByte & ExternalFlag) != 0)
-                return ReadExternal();
+                return ReadExternal().Map(bytes => new ChunkPayload(bytes, scheme, IsExternal: true));
 
-            var payload = new byte[_payloadLength];
-            _region.ReadExactly(Offset + PrefixSize, payload);
-            return LoadResult<byte[]>.Success(payload);
+            var buffer = scratch is not null && scratch.Length >= _payloadLength ? scratch : new byte[_payloadLength];
+            _region.ReadExactly(Offset + PrefixSize, buffer.AsSpan(0, _payloadLength));
+            return LoadResult<ChunkPayload>.Success(new ChunkPayload(buffer.AsMemory(0, _payloadLength), scheme, IsExternal: false));
         }
         catch (Exception e)
         {
-            return LoadResult<byte[]>.Fail($"Chunk ({X}, {Z}): read payload", e);
+            return LoadResult<ChunkPayload>.Fail($"Chunk ({X}, {Z}): read payload", e);
         }
     }
+
+    /// <summary>Upper bound on an inline payload: 255 sectors minus the prefix.</summary>
+    public const int MaxInlinePayload = 255 * RegionFile.SectorSize - PrefixSize;
 
     /// <summary>Decompresses and parses the chunk. The root must be a compound.</summary>
     public LoadResult<NbtCompound> ReadNbt()
@@ -92,10 +112,27 @@ public sealed class ChunkRef
             return LoadResult<NbtCompound>.Fail($"Chunk ({X}, {Z}): unsupported compression scheme {SchemeByte}"
                 + (SchemeByte == SchemeLz4 ? " (LZ4)" : ""));
 
+        return ParseNbt(payload.Value!, compression.Value);
+    }
+
+    /// <summary>Parses an already-read payload (e.g. one obtained through the scratch-buffer overload).</summary>
+    public LoadResult<NbtCompound> ParseNbt(ChunkPayload payload)
+    {
+        var compression = Compression;
+        if (compression is null)
+            return LoadResult<NbtCompound>.Fail($"Chunk ({X}, {Z}): unsupported compression scheme {SchemeByte}"
+                + (SchemeByte == SchemeLz4 ? " (LZ4)" : ""));
+        if (MemoryMarshal.TryGetArray(payload.Bytes, out var segment))
+            return ParseNbt(segment.Array!, compression.Value, segment.Offset, segment.Count);
+        return ParseNbt(payload.Bytes.ToArray(), compression.Value);
+    }
+
+    private LoadResult<NbtCompound> ParseNbt(byte[] bytes, NbtCompression compression, int offset = 0, int count = -1)
+    {
         try
         {
             var file = new NbtFile { BigEndian = true };
-            file.LoadFromBuffer(payload.Value!, 0, payload.Value!.Length, compression.Value);
+            file.LoadFromBuffer(bytes, offset, count < 0 ? bytes.Length : count, compression);
             if (file.RootTag is not NbtCompound root)
                 return LoadResult<NbtCompound>.Fail($"Chunk ({X}, {Z}): root tag is {file.RootTag?.TagType}, not a compound");
             return LoadResult<NbtCompound>.Success(root);

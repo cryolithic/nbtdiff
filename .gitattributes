@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.mca binary
+*.mcr binary
+*.mcc binary
+*.dat binary
+*.nbt binary

@@ -136,6 +136,10 @@ Things discovered while building that are not visible from the code. Append here
 - 2026-09-08 (S1): xunit 2.9.3 runs test classes in parallel; fixtures must not share temp paths
   (`TempDir` gives each test its own directory).
 
+- 2026-09-08 (S2): an empty `NbtList` reads back with `ListType == End` from binary but
+  `Unknown` from SNBT. The canonical hasher ignores the element type of empty lists; the differ
+  (S4) must do the same or hash-equal trees will show a diff.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

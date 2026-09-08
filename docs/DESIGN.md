@@ -172,10 +172,10 @@ public enum FileKind { Region, Nbt, Snbt, Json, Text, Binary, Directory }
 
 public static class FileClassifier
 {
-    // Extension first, then a sniff of the first bytes for ambiguous cases.
+    // Extension only (case-insensitive); no content sniffing. Unknown → Binary.
     // .mca .mcr → Region      (.mcc is Binary; it is reached through its region file)
-    // .dat .dat_old .nbt .schematic .litematic → Nbt
-    // .snbt → Snbt; .json → Json; .txt .lock .properties .log → Text; else Binary
+    // .dat .dat_old .dat_mcr .nbt .schematic .schem .litematic → Nbt
+    // .snbt → Snbt; .json .mcmeta → Json; .txt .lock .properties .log .toml .cfg .yml … → Text
     public static FileKind Classify(string path);
 }
 ```
@@ -210,24 +210,40 @@ Scan runs Tier 1 across everything, then Tier 2 only on files Tier 1 marked `Dif
 compare option (`DeepVerify = false`) for very large worlds.
 
 ```csharp
-public sealed record RegionFingerprint(IReadOnlyDictionary<(int x, int z), ulong> ChunkHashes);
-public sealed record FileFingerprint(FileKind Kind, long Size, ulong Hash, RegionFingerprint? Region);
-
+public enum FingerprintTier { Quick, Deep }
+public sealed record RegionFingerprint(
+    IReadOnlyDictionary<(int X, int Z), ulong> ChunkHashes,
+    IReadOnlyDictionary<(int X, int Z), string> ChunkErrors);   // unreadable chunks, with reason
+public sealed record FileFingerprint(FileKind Kind, FingerprintTier Tier, long Size, ulong Hash, RegionFingerprint? Region = null)
+{
+    public bool HasErrors { get; }
+    public bool ContentEquals(FileFingerprint other);   // same kind + hash, and no errors on either side
+}
 public interface IFingerprinter
 {
-    ValueTask<FileFingerprint> QuickAsync(string path, FileKind kind, CancellationToken ct);
-    ValueTask<FileFingerprint> DeepAsync(string path, FileKind kind, CancellationToken ct);
+    ValueTask<LoadResult<FileFingerprint>> QuickAsync(string path, FileKind kind, CancellationToken ct = default);
+    ValueTask<LoadResult<FileFingerprint>> DeepAsync(string path, FileKind kind, CancellationToken ct = default);
 }
+public sealed class Fingerprinter(bool compoundOrderMatters = false) : IFingerprinter;
 ```
+
+A region's file-level `Hash` is derived from its chunk table (hashes in (z, x) order, error text for
+unreadable slots), so region equality is one `ulong` compare. A file that fails to open at all is a
+`LoadResult` failure; a chunk that fails inside an otherwise readable region is a `ChunkErrors`
+entry, and `ContentEquals` never returns true while either side has one. Region reads reuse one
+pooled `MaxInlinePayload` buffer per call via `ChunkRef.ReadCompressedPayload(scratch)`.
 
 ### 4.3 Canonical NBT hashing
 
 `NbtCanonicalHasher.Hash(NbtTag)` walks the tree and feeds XxHash64 with: tag type byte, name,
 then children. **Compound children are visited in ordinal-sorted key order**, so key order never
 affects the hash. Lists and arrays are visited in stored order. Floats/doubles are hashed by their
-IEEE bits (so `-0.0 != 0.0` and NaN is stable). The same walk order is used by the differ, so
-"hash equal" and "diff empty" always agree — there is one test asserting exactly that over the
-fixture corpus.
+IEEE bits (so `-0.0 != 0.0` and NaN is stable). Names are included; a null name (list item) hashes
+differently from an empty one. **An empty list's element type is ignored** — SNBT yields `Unknown`,
+binary yields `End`, and Minecraft writes `End` — so the differ must treat them as equal too. The
+same walk order is used by the differ (`NbtCanonicalHasher.CanonicalChildren` is shared), so "hash
+equal" and "diff empty" always agree — there is one test asserting exactly that over the fixture
+corpus.
 
 ### 4.4 Directory scan
 
