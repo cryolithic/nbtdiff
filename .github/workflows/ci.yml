@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    branches: ["**"]
+    tags: ["v*"]
   pull_request:
 
 jobs:
@@ -24,3 +26,22 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}
           path: "**/TestResults/*.trx"
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rid: [win-x64, linux-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet publish src/NbtDiff.App -p:PublishProfile=${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nbtdiff-${{ matrix.rid }}-${{ github.ref_name }}
+          path: publish/${{ matrix.rid }}/
+          if-no-files-found: error

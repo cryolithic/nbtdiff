@@ -18,6 +18,7 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
     private readonly FileFingerprint? _leftFp;
     private readonly FileFingerprint? _rightFp;
     private readonly IUiDispatcher _ui;
+    private readonly ISettingsService? _settings;
     private RegionFile? _left;
     private RegionFile? _right;
     private int _generation;
@@ -39,13 +40,14 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
 
     public bool HasError => ErrorMessage is not null;
 
-    public RegionCompareViewModel(string? leftPath, string? rightPath, FileFingerprint? leftFp, FileFingerprint? rightFp, IUiDispatcher ui)
+    public RegionCompareViewModel(string? leftPath, string? rightPath, FileFingerprint? leftFp, FileFingerprint? rightFp, IUiDispatcher ui, ISettingsService? settings = null)
     {
         _leftPath = leftPath is not null && File.Exists(leftPath) ? leftPath : null;
         _rightPath = rightPath is not null && File.Exists(rightPath) ? rightPath : null;
         _leftFp = leftFp;
         _rightFp = rightFp;
         _ui = ui;
+        _settings = settings;
     }
 
     public Task Load()
@@ -127,7 +129,7 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
     {
         var cell = Grid.Selected;
         if (cell is not { IsPresent: true } || IsDisposed) return;
-        var vm = new FileCompareViewModel(new ChunkDiffSource(_left, _right, cell.X, cell.Z, Title), _ui);
+        var vm = new FileCompareViewModel(new ChunkDiffSource(_left, _right, cell.X, cell.Z, Title), _ui, _settings);
         _ = vm.Load();
         NavigationRequested?.Invoke(vm);
     }

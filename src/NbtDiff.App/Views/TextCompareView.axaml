@@ -1,0 +1,105 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NbtDiff.App.ViewModels"
+             xmlns:conv="using:NbtDiff.App.Converters"
+             x:Class="NbtDiff.App.Views.TextCompareView"
+             x:DataType="vm:TextCompareViewModel">
+
+  <UserControl.Resources>
+    <conv:LineDiffKindBackgroundConverter x:Key="KindBackground" />
+  </UserControl.Resources>
+
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="F7" Command="{Binding PreviousHunkCommand}" />
+    <KeyBinding Gesture="F8" Command="{Binding NextHunkCommand}" />
+  </UserControl.KeyBindings>
+
+  <UserControl.Styles>
+    <Style Selector="DataGrid#Grid DataGridRow">
+      <Setter Property="Background" Value="{ReflectionBinding Kind, Converter={StaticResource KindBackground}}" />
+    </Style>
+    <Style Selector="TextBlock.code">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.lineno">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+
+    <!-- Toolbar -->
+    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="{Binding LeftPathText}" VerticalAlignment="Center" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="420" ToolTip.Tip="{Binding LeftPathText}" />
+        <TextBlock Text="↔" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding RightPathText}" VerticalAlignment="Center" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="420" ToolTip.Tip="{Binding RightPathText}" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <Button Content="◀ Previous hunk (F7)" Command="{Binding PreviousHunkCommand}" />
+        <Button Content="Next hunk (F8) ▶" Command="{Binding NextHunkCommand}" />
+      </StackPanel>
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
+      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- Status bar -->
+    <TextBlock DockPanel.Dock="Bottom" Margin="8,4,8,6" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis" />
+
+    <DataGrid x:Name="Grid"
+              ItemsSource="{Binding Rows}"
+              SelectedItem="{Binding SelectedRow}"
+              IsReadOnly="True"
+              AutoGenerateColumns="False"
+              CanUserSortColumns="False"
+              CanUserReorderColumns="False"
+              CanUserResizeColumns="True"
+              SelectionMode="Single"
+              HeadersVisibility="Column"
+              GridLinesVisibility="Vertical"
+              RowHeight="22"
+              Margin="8,0">
+      <DataGrid.Columns>
+        <DataGridTemplateColumn Header="" Width="56" x:DataType="vm:TextDiffRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:TextDiffRowItem">
+              <TextBlock Classes="lineno" Text="{Binding LeftLineText}" Margin="0,0,6,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Left" Width="*" x:DataType="vm:TextDiffRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:TextDiffRowItem">
+              <TextBlock Classes="code" Text="{Binding LeftText}" ToolTip.Tip="{Binding LeftText}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="" Width="36" x:DataType="vm:TextDiffRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:TextDiffRowItem">
+              <TextBlock Text="{Binding StatusGlyph}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="" Width="56" x:DataType="vm:TextDiffRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:TextDiffRowItem">
+              <TextBlock Classes="lineno" Text="{Binding RightLineText}" Margin="0,0,6,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Right" Width="*" x:DataType="vm:TextDiffRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:TextDiffRowItem">
+              <TextBlock Classes="code" Text="{Binding RightText}" ToolTip.Tip="{Binding RightText}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

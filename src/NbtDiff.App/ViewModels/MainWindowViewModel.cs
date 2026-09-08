@@ -13,6 +13,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IFingerprinter? _fingerprinter;
     private readonly List<ViewModelBase> _stack = [];
 
+    public ISettingsService Settings { get; }
+
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanGoBack), nameof(WindowTitle))] [NotifyCanExecuteChangedFor(nameof(BackCommand))]
     private ViewModelBase? _current;
 
@@ -20,11 +22,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string WindowTitle => Current is null ? "nbt-diff" : $"nbt-diff — {Current.Title}";
     public IReadOnlyList<ViewModelBase> Stack => _stack;
 
-    public MainWindowViewModel(IDialogService dialogs, IUiDispatcher ui, IFingerprinter? fingerprinter = null)
+    /// <param name="settings">Null keeps settings in memory only.</param>
+    public MainWindowViewModel(IDialogService dialogs, IUiDispatcher ui, IFingerprinter? fingerprinter = null, ISettingsService? settings = null)
     {
         _dialogs = dialogs;
         _ui = ui;
         _fingerprinter = fingerprinter;
+        Settings = settings ?? new SettingsService(null);
     }
 
     public void Push(ViewModelBase vm)
@@ -46,14 +50,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public FolderCompareViewModel NewFolderCompare()
     {
-        var vm = new FolderCompareViewModel(_dialogs, _ui, _fingerprinter);
+        var vm = new FolderCompareViewModel(_dialogs, _ui, _fingerprinter, Settings);
         vm.NavigationRequested += row => Push(CreateCompareView(row.Kind, row.Left?.FullPath, row.Right?.FullPath, row.Left?.Fingerprint, row.Right?.Fingerprint));
         return vm;
     }
 
     /// <summary>
-    /// The view for one file pair by kind: regions get the chunk grid, NBT/SNBT the tag tree, everything
-    /// else a placeholder until S7 adds text compare. A null path is an absent side. Loading starts immediately.
+    /// The view for one file pair by kind: regions get the chunk grid, NBT/SNBT the tag tree, JSON and
+    /// text a line diff, binary files a summary of sizes and hashes. A null path is an absent side.
+    /// Loading starts immediately.
     /// </summary>
     public ViewModelBase CreateCompareView(FileKind kind, string? leftPath, string? rightPath, FileFingerprint? leftFp = null, FileFingerprint? rightFp = null)
     {
@@ -61,7 +66,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             case FileKind.Region:
             {
-                var vm = new RegionCompareViewModel(leftPath, rightPath, leftFp, rightFp, _ui);
+                var vm = new RegionCompareViewModel(leftPath, rightPath, leftFp, rightFp, _ui, Settings);
                 vm.NavigationRequested += Push;
                 _ = vm.Load();
                 return vm;
@@ -69,14 +74,29 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case FileKind.Nbt:
             case FileKind.Snbt:
             {
-                var vm = new FileCompareViewModel(new FileDiffSource(leftPath, rightPath), _ui);
+                var vm = new FileCompareViewModel(new FileDiffSource(leftPath, rightPath), _ui, Settings);
+                _ = vm.Load();
+                return vm;
+            }
+            case FileKind.Json:
+            case FileKind.Text:
+            {
+                var vm = new TextCompareViewModel(leftPath, rightPath, _ui);
                 _ = vm.Load();
                 return vm;
             }
             default:
                 return new PlaceholderViewModel(FileDiffSource.PairTitle(leftPath, rightPath),
-                    $"{kind} files are compared byte for byte in the folder view; a text compare view is not implemented yet (S7).\n\n{leftPath ?? "(missing)"}\n{rightPath ?? "(missing)"}");
+                    $"Binary files are compared byte for byte.\n\n{DescribeBinary(leftPath, leftFp)}\n{DescribeBinary(rightPath, rightFp)}");
         }
+    }
+
+    private static string DescribeBinary(string? path, FileFingerprint? fp)
+    {
+        if (path is null || !File.Exists(path)) return "(missing)";
+        long size = fp?.Size ?? new FileInfo(path).Length;
+        string hash = fp is null ? "hash not computed" : $"xxh64 {fp.Hash:x16}";
+        return $"{path} — {size:N0} bytes · {hash}";
     }
 
     /// <summary>

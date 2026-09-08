@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NbtDiff.App.Services;
@@ -15,6 +16,7 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
     private readonly IFingerprinter _fingerprinter;
+    private readonly ISettingsService _settings;
     private readonly ChangeCoalescer<CompareRow> _changes = new();
 
     private Dictionary<CompareRow, CompareRowItem> _index = new();
@@ -52,11 +54,43 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     public bool HasError => ErrorMessage is not null;
     public bool HasResult => Current is not null;
 
-    public FolderCompareViewModel(IDialogService dialogs, IUiDispatcher ui, IFingerprinter? fingerprinter = null)
+    /// <summary>Most recently compared pairs, newest first (persisted).</summary>
+    public ObservableCollection<RecentPair> RecentPairs { get; } = [];
+    public bool HasRecent => RecentPairs.Count > 0;
+
+    [ObservableProperty] private RecentPair? _selectedRecent;
+
+    public FolderCompareViewModel(IDialogService dialogs, IUiDispatcher ui, IFingerprinter? fingerprinter = null, ISettingsService? settings = null)
     {
         _dialogs = dialogs;
         _ui = ui;
-        _fingerprinter = fingerprinter ?? new Fingerprinter();
+        _settings = settings ?? new SettingsService(null);
+        _fingerprinter = fingerprinter ?? new Fingerprinter(_settings.Current.CompoundOrderMatters);
+        _deepVerify = _settings.Current.DeepVerify;
+        RefreshRecent();
+    }
+
+    private void RefreshRecent()
+    {
+        RecentPairs.Clear();
+        foreach (var p in _settings.Current.RecentPairs) RecentPairs.Add(p);
+        OnPropertyChanged(nameof(HasRecent));
+    }
+
+    partial void OnDeepVerifyChanged(bool value)
+    {
+        _settings.Current.DeepVerify = value;
+        _settings.Save();
+    }
+
+    /// <summary>Picking a recent pair fills both paths and compares; the picker then clears so it can be picked again.</summary>
+    partial void OnSelectedRecentChanged(RecentPair? value)
+    {
+        if (value is null) return;
+        LeftPath = value.Left;
+        RightPath = value.Right;
+        SelectedRecent = null;
+        if (CompareCommand.CanExecute(null)) CompareCommand.Execute(null);
     }
 
     partial void OnFilterChanged(RowFilter value)
@@ -80,7 +114,8 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         CompareRoot root;
         try
         {
-            var comparer = new DirectoryComparer(_fingerprinter, new CompareOptions(DeepVerify: DeepVerify));
+            var options = _settings.Current.ToCompareOptions() with { DeepVerify = DeepVerify };
+            var comparer = new DirectoryComparer(_fingerprinter, options);
             root = comparer.Prepare(left, right);
         }
         catch (Exception e)
@@ -88,6 +123,10 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
             ErrorMessage = $"Cannot read folders: {e.Message}";
             return;
         }
+
+        _settings.Current.AddRecent(left, right);
+        _settings.Save();
+        RefreshRecent();
 
         Current = root;
         OnPropertyChanged(nameof(HasResult));
@@ -162,8 +201,11 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         if (IsScanning)
         {
             ProgressFraction = p.Fraction;
-            string where = _lastChangedDir is { Length: > 0 } d ? $"scanning {d}/" : p.Tier1Complete ? "verifying" : "scanning";
-            StatusText = $"{summary} · {where} ({p.Fraction:P0})";
+            // Tier 2 is a small tail after thousands of Tier-1 files, so a percentage would read 100% while it runs.
+            string where = p.Tier1Complete && p.Tier2Queued > 0
+                ? $"verifying {p.Tier2Done}/{p.Tier2Queued}"
+                : $"{(_lastChangedDir is { Length: > 0 } d ? $"scanning {d}/" : "scanning")} ({p.Fraction:P0})";
+            StatusText = $"{summary} · {where}";
         }
         else
         {

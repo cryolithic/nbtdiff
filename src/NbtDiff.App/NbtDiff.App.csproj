@@ -6,6 +6,8 @@
     <RootNamespace>NbtDiff.App</RootNamespace>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Skia/HarfBuzz ship 100 MB of native .pdb files; keep them out of build and publish output. -->
+    <CopyDebugSymbolFilesFromPackages>false</CopyDebugSymbolFilesFromPackages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,5 +27,13 @@
   <ItemGroup>
     <InternalsVisibleTo Include="NbtDiff.App.Tests" />
   </ItemGroup>
+
+  <!-- The native Skia/HarfBuzz packages ship .pdb files as native assets, which
+       CopyDebugSymbolFilesFromPackages does not cover; drop them from the publish set. -->
+  <Target Name="StripNativePdbsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
 
 </Project>

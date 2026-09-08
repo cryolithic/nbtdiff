@@ -76,16 +76,17 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public void TwoTextFiles_Placeholder()
+    public async Task TwoTextFiles_TextCompare()
     {
         using var d = new TempDir();
         File.WriteAllText(d.File("a.json"), "{}");
         File.WriteAllText(d.File("b.json"), "{}");
         var shell = Shell();
         shell.Start([d.File("a.json"), d.File("b.json")]);
-        var vm = Assert.IsType<PlaceholderViewModel>(shell.Current);
-        Assert.False(vm.IsError);
-        Assert.Contains("S7", vm.Message);
+        var vm = Assert.IsType<TextCompareViewModel>(shell.Current);
+        await vm.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.False(vm.HasError);
+        Assert.False(vm.Result!.HasChanges);
     }
 
     [Fact]
@@ -137,7 +138,8 @@ public class MainWindowViewModelTests
         Assert.IsType<RegionCompareViewModel>(shell.CreateCompareView(FileKind.Region, null, null));
         Assert.IsType<FileCompareViewModel>(shell.CreateCompareView(FileKind.Nbt, null, null));
         Assert.IsType<FileCompareViewModel>(shell.CreateCompareView(FileKind.Snbt, null, null));
-        Assert.IsType<PlaceholderViewModel>(shell.CreateCompareView(FileKind.Json, null, null));
+        Assert.IsType<TextCompareViewModel>(shell.CreateCompareView(FileKind.Json, null, null));
+        Assert.IsType<TextCompareViewModel>(shell.CreateCompareView(FileKind.Text, null, null));
         Assert.IsType<PlaceholderViewModel>(shell.CreateCompareView(FileKind.Binary, null, null));
     }
 

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:NbtDiff.App.ViewModels"
+             xmlns:svc="using:NbtDiff.App.Services"
              xmlns:conv="using:NbtDiff.App.Converters"
              x:Class="NbtDiff.App.Views.FolderCompareView"
              x:DataType="vm:FolderCompareViewModel">
@@ -42,13 +43,23 @@
 
     <!-- Toolbar -->
     <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
-      <Grid ColumnDefinitions="*,Auto,12,*,Auto,12,Auto,Auto" RowDefinitions="Auto">
+      <Grid ColumnDefinitions="*,Auto,12,*,Auto,12,Auto,Auto,Auto" RowDefinitions="Auto">
         <TextBox Grid.Column="0" Text="{Binding LeftPath}" PlaceholderText="Left folder" />
         <Button Grid.Column="1" Content="…" Margin="4,0,0,0" Command="{Binding BrowseLeftCommand}" ToolTip.Tip="Browse for the left folder" />
         <TextBox Grid.Column="3" Text="{Binding RightPath}" PlaceholderText="Right folder" />
         <Button Grid.Column="4" Content="…" Margin="4,0,0,0" Command="{Binding BrowseRightCommand}" ToolTip.Tip="Browse for the right folder" />
         <Button Grid.Column="6" Content="Compare" Command="{Binding CompareCommand}" Classes="accent" />
         <Button Grid.Column="7" Content="Cancel" Margin="4,0,0,0" Command="{Binding CancelCommand}" />
+        <ComboBox Grid.Column="8" Margin="4,0,0,0" MinWidth="110" MaxWidth="360"
+                  PlaceholderText="Recent…" IsEnabled="{Binding HasRecent}"
+                  ItemsSource="{Binding RecentPairs}" SelectedItem="{Binding SelectedRecent}"
+                  ToolTip.Tip="Recently compared folder pairs">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="svc:RecentPair">
+              <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
       </Grid>
 
       <StackPanel Orientation="Horizontal" Spacing="4">
@@ -117,7 +128,7 @@
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTextColumn Header="Size" Width="80" Binding="{Binding LeftSizeText}" x:DataType="vm:CompareRowItem" />
-        <DataGridTextColumn Header="Modified" Width="150" Binding="{Binding LeftModifiedText}" x:DataType="vm:CompareRowItem" />
+        <DataGridTextColumn Header="Modified" Width="180" Binding="{Binding LeftModifiedText}" x:DataType="vm:CompareRowItem" />
 
         <DataGridTemplateColumn Header="" Width="36" x:DataType="vm:CompareRowItem">
           <DataGridTemplateColumn.CellTemplate>
@@ -145,7 +156,7 @@
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTextColumn Header="Size" Width="80" Binding="{Binding RightSizeText}" x:DataType="vm:CompareRowItem" />
-        <DataGridTextColumn Header="Modified" Width="150" Binding="{Binding RightModifiedText}" x:DataType="vm:CompareRowItem" />
+        <DataGridTextColumn Header="Modified" Width="180" Binding="{Binding RightModifiedText}" x:DataType="vm:CompareRowItem" />
 
       </DataGrid.Columns>
     </DataGrid>

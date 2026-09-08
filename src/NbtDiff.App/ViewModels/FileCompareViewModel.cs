@@ -43,10 +43,16 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     public bool HasArrayDetail => ArrayDetail is not null;
     public bool HasResult => _root is not null;
 
-    public FileCompareViewModel(IDiffSource source, IUiDispatcher ui)
+    private readonly ISettingsService _settings;
+
+    /// <param name="settings">Seeds and persists the compare toggles; null keeps them in memory.</param>
+    public FileCompareViewModel(IDiffSource source, IUiDispatcher ui, ISettingsService? settings = null)
     {
         _source = source;
         _ui = ui;
+        _settings = settings ?? new SettingsService(null);
+        _compoundOrderMatters = _settings.Current.CompoundOrderMatters;
+        _useKeyedAligner = _settings.Current.UseKeyedAligner;
     }
 
     public DiffOptions Options => new(CompoundOrderMatters, UseKeyedAligner ? KeyedAligner.Default : null);
@@ -154,8 +160,19 @@ public sealed partial class FileCompareViewModel : ViewModelBase
         Tree.SetFilter(value ? null : static i => i.IsChanged);
     }
 
-    partial void OnCompoundOrderMattersChanged(bool value) => _ = Rediff();
-    partial void OnUseKeyedAlignerChanged(bool value) => _ = Rediff();
+    partial void OnCompoundOrderMattersChanged(bool value)
+    {
+        _settings.Current.CompoundOrderMatters = value;
+        _settings.Save();
+        _ = Rediff();
+    }
+
+    partial void OnUseKeyedAlignerChanged(bool value)
+    {
+        _settings.Current.UseKeyedAligner = value;
+        _settings.Save();
+        _ = Rediff();
+    }
 
     partial void OnSelectedItemChanged(DiffNodeItem? value) =>
         ArrayDetail = value is { IsArray: true } ? ArrayDetailWindow.Compute(value.Node) : null;

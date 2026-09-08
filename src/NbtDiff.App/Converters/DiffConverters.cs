@@ -48,6 +48,24 @@ public sealed class ChunkStatusBrushConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
+/// <summary>Text view row background by line diff kind, same hues as the tag view.</summary>
+public sealed class LineDiffKindBackgroundConverter : IValueConverter
+{
+    private static readonly IBrush Changed = new SolidColorBrush(Color.FromArgb(0x40, 0xE0, 0x40, 0x40));
+    private static readonly IBrush Removed = new SolidColorBrush(Color.FromArgb(0x38, 0x30, 0x90, 0xF0));
+    private static readonly IBrush Added = new SolidColorBrush(Color.FromArgb(0x38, 0xA0, 0x50, 0xE0));
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
+    {
+        NbtDiff.Core.Diff.LineDiffKind.Changed => Changed,
+        NbtDiff.Core.Diff.LineDiffKind.Removed => Removed,
+        NbtDiff.Core.Diff.LineDiffKind.Added => Added,
+        _ => Brushes.Transparent,
+    };
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 /// <summary>Highlights array-detail rows whose elements differ.</summary>
 public sealed class DifferentRowBackgroundConverter : IValueConverter
 {

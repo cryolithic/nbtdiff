@@ -16,7 +16,8 @@ public partial class App : Application
         {
             MainWindow? window = null;
             var dialogs = new AvaloniaDialogService(() => window);
-            var shell = new MainWindowViewModel(dialogs, AvaloniaUiDispatcher.Instance);
+            var settings = new SettingsService(new SettingsStore(SettingsStore.DefaultPath));
+            var shell = new MainWindowViewModel(dialogs, AvaloniaUiDispatcher.Instance, settings: settings);
             window = new MainWindow { DataContext = shell };
             desktop.MainWindow = window;
             shell.Start(desktop.Args ?? []);

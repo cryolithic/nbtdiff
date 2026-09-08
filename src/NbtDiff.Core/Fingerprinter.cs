@@ -79,6 +79,7 @@ public sealed class Fingerprinter(bool compoundOrderMatters = false) : IFingerpr
         var hashes = new Dictionary<(int X, int Z), ulong>(region.ChunkCount);
         var errors = new Dictionary<(int X, int Z), string>();
         byte[] scratch = ChunkPool.Rent(ChunkRef.MaxInlinePayload);
+        var h = new XxHash64();   // one hasher per region, reset per chunk
         try
         {
             foreach (var chunk in region.Chunks)
@@ -93,7 +94,7 @@ public sealed class Fingerprinter(bool compoundOrderMatters = false) : IFingerpr
 
                 if (tier == FingerprintTier.Quick)
                 {
-                    var h = new XxHash64();
+                    h.Reset();
                     h.Append([payload.Value!.Scheme]);
                     h.Append(payload.Value.Bytes.Span);
                     hashes[(chunk.X, chunk.Z)] = h.GetCurrentHashAsUInt64();
