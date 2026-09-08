@@ -257,6 +257,13 @@ too, so "present but ignored" equals "absent". The set is user-editable (`Compar
 persisted in settings); only the deep tier can honour it, so a timestamp-only change shows as
 `ProbablyDifferent` until Tier 2 clears it.
 
+**Keyed lists.** With `keyedLists` set (a `KeyedAligner`), the hasher visits a compound list's items
+in `KeyedAligner.CanonicalItems` order — keyed items sorted by key, ties in occurrence order, then
+unkeyed items in order — so a reordered entity/block-entity list hashes equal, matching the keyed
+differ. `CompareOptions.KeyedLists` is **on by default** and `CompareOptions.ToDiffOptions()` /
+`Fingerprinter.For(options)` keep scan, region grid and tag view on the same aligner. The
+hash⇔diff agreement tests run in all four (order × keyed) modes.
+
 ### 4.4 Directory scan (as shipped in S3)
 
 ```csharp
@@ -364,13 +371,14 @@ Matching rules:
   element types are `TypeChanged`; empty lists never differ by element type (the hasher's rule);
   empty vs non-empty yields `Added`/`Removed` items. A future `KeyedAligner` (match compounds by
   `UUID`/`id`) slots in here — but hash⇔diff agreement is only guaranteed with `IndexAligner`.
-- **Keyed lists** (`KeyedAligner`, shipped as the first S8 item): for lists of compounds, each
-  item's key is the first present name from `["UUID", "id", "Name", "Slot"]` (configurable),
-  rendered as `"{TagType}:{compact SNBT}"`; equal keys pair in order of occurrence, surplus keyed
-  items are one-sided, unkeyed items pair by position among themselves. Output order: every left
-  index in order, then unmatched right indices. Non-compound or empty lists delegate to
-  `IndexAligner`. Caveat: a reorder hashes differently but diffs clean; and a right-only item's
-  `[i]` name uses its right index, so `DiffNode.Path` can repeat within one list.
+- **Keyed lists** (`KeyedAligner`, default on): for lists of compounds, each item's key is the
+  first present of `UUID`, the `{x,y,z}` integer position (block entities — so two chests are not
+  paired by their shared `id`), `id`, `Name`, `Slot`, `Y` (sections); rendered as
+  `"{TagType}:{compact SNBT}"`. Equal keys pair in order of occurrence, surplus keyed items are
+  one-sided, unkeyed items pair by position among themselves. Output order: every left index in
+  order, then unmatched right indices. Non-compound or empty lists delegate to `IndexAligner`.
+  The hasher agrees when given the same aligner (§4.3). Caveat: a right-only item's `[i]` name
+  uses its right index, so `DiffNode.Path` can repeat within one list.
 - **Arrays** (byte/int/long): leaf values; `ValueChanged` carries `ArrayDifference`.
 - **Scalars**: `ValueChanged` on inequality. Floats compare by bits, matching the hasher.
 
@@ -435,9 +443,12 @@ Folder colour follows S3's derived folder status.
 
 Toolbar: left/right path boxes, Browse (via `IDialogService` over `IStorageProvider`),
 Compare/Cancel, filter chips (All / Differences / Same / Orphans — "Differences" hides `Pending`),
-Deep-verify toggle, an "Ignore tags" box (comma-separated `TagIgnoreSet` paths, persisted, applied on
-the next compare and by the file/chunk views), Export text / Export JSON (`DiffReport.ToString` to a
-save-picker path). The `Fingerprinter` is built per compare so edited options take effect.
+Deep-verify toggle, "Match list items by key" (keyed lists, default on — shared with the chunk grid
+and tag views), an "Ignore tags" box (comma-separated `TagIgnoreSet` paths, persisted, applied on the
+next compare and by the file/chunk views), Export text / Export JSON (`DiffReport.ToString` to a
+save-picker path). The `Fingerprinter` is built per compare (`Fingerprinter.For(options)`) so edited
+options take effect. The status bar names the pass explicitly: `pass 1 of 2 — hashing bytes in
+region/ (43%)`, then `pass 2 of 2 — verifying content 12/31`.
 Status bar: `3 differ · 4 same · 1 left-only · 2 right-only · 1 error · scanning region/ (43%)`
 — the "scanning" directory is the parent of the last changed file (S3 exposes no current dir).
 
@@ -463,7 +474,9 @@ with an empty grid. The compound-order option lives in the file view, not here.
 
 A **single aligned tree**: one `DataGrid` over `FlatTreeSource<DiffNodeItem>` with columns
 Name · Type · Left value · Right value · Status (glyph + colour per `DiffKind`, including
-`Moved`/`Renamed`). The diff is produced by an `IDiffSource` (`FileDiffSource` loads both
+`Moved`/`Renamed`). A compound list item's Name carries its identity so a collapsed entity reads
+`[3]: "minecraft:zombie"` (`DiffNodeItem.IdentityOf`: `id`/`Name`, else `UUID`, else `Slot`, plus
+`@ (x, y, z)` for block entities; `left → right` when the sides disagree). The diff is produced by an `IDiffSource` (`FileDiffSource` loads both
 `NbtDocument`s off the UI thread; `ChunkDiffSource` wraps a `DiffNode` from the region view;
 `TagPairSource` for tests) and re-run in place when the options change: a compound-order toggle and
 a checkbox "Match list items by UUID / id" (→ `KeyedAligner.Default`).

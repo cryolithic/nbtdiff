@@ -13,7 +13,7 @@ public sealed class DirectoryComparer
     private readonly CompareOptions _options;
 
     public DirectoryComparer(CompareOptions? options = null)
-        : this(new Fingerprinter((options ?? new CompareOptions()).CompoundOrderMatters, (options ?? new CompareOptions()).EffectiveIgnoredTags), options) { }
+        : this(Fingerprinter.For(options ?? new CompareOptions()), options) { }
 
     public DirectoryComparer(IFingerprinter fingerprinter, CompareOptions? options = null)
     {

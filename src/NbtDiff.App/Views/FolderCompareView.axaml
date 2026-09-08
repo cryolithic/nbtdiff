@@ -78,6 +78,8 @@
                      Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Orphans}" />
         <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
         <CheckBox Content="Deep verify" IsChecked="{Binding DeepVerify}" ToolTip.Tip="Parse files whose bytes differ, so recompression is not reported as a change" />
+        <CheckBox Content="Match list items by key" IsChecked="{Binding UseKeyedAligner}"
+                  ToolTip.Tip="Pair entities by UUID, block entities by position, items by id, so a reordered list is not a difference. Applies to the scan, the chunk grid and the tag views." />
         <TextBlock Text="Ignore tags:" VerticalAlignment="Center" Margin="4,0,0,0" />
         <TextBox Text="{Binding IgnoredTagsText}" Width="220" VerticalAlignment="Center"
                  ToolTip.Tip="Tag paths that are not content, comma-separated. Default LastUpdate (the chunk save tick Minecraft rewrites on every save). Lists are transparent; * matches one key. Takes effect on the next compare." />

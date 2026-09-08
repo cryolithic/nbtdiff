@@ -7,12 +7,20 @@ namespace NbtDiff.Core;
 /// Pairs compound list items by an identity key (entity <c>UUID</c>, block-entity <c>id</c>, item
 /// <c>Slot</c>, …) instead of by position, so a reordered or partially removed entity list diffs as
 /// the few real changes rather than a cascade. Lists whose items are not compounds fall back to
-/// <see cref="IndexAligner"/>. Hash/diff agreement does <b>not</b> hold with this aligner: a reorder
-/// hashes differently but diffs as unchanged — that is the point.
+/// <see cref="IndexAligner"/>. Hash/diff agreement holds when the hasher is given the same aligner
+/// (<see cref="NbtCanonicalHasher.Hash"/>'s <c>keyedLists</c>): it then hashes keyed items in key order,
+/// so a reorder neither hashes differently nor diffs.
 /// </summary>
 public sealed class KeyedAligner : IListAligner
 {
-    public static readonly IReadOnlyList<string> DefaultKeyNames = ["UUID", "id", "Name", "Slot"];
+    /// <summary>
+    /// Tried in order. Block entities have no UUID but do have <c>x</c>/<c>y</c>/<c>z</c>; that position is
+    /// tried right after <c>UUID</c> (see <see cref="PositionKey"/>) so two chests are not paired by
+    /// their shared <c>id</c>. <c>Y</c> keys chunk sections.
+    /// </summary>
+    public static readonly IReadOnlyList<string> DefaultKeyNames = ["UUID", PositionKey, "id", "Name", "Slot", "Y"];
+    /// <summary>Pseudo key name: the compound's integer <c>x</c>, <c>y</c>, <c>z</c> children together.</summary>
+    public const string PositionKey = "{x,y,z}";
     public static readonly KeyedAligner Default = new(DefaultKeyNames);
 
     private readonly string[] _keyNames;
@@ -70,9 +78,35 @@ public sealed class KeyedAligner : IListAligner
     {
         foreach (var name in _keyNames)
         {
+            if (name == PositionKey)
+            {
+                if (item.TryGet("x", out NbtInt x) && item.TryGet("y", out NbtInt y) && item.TryGet("z", out NbtInt z))
+                    return $"xyz:{x.Value},{y.Value},{z.Value}";
+                continue;
+            }
             if (item.TryGet(name, out NbtTag tag))
                 return $"{tag.TagType}:{SnbtWriter.Write(tag)}";
         }
         return null;
+    }
+
+    /// <summary>
+    /// The order in which the hasher visits a compound list's items so that it agrees with <see cref="Align"/>:
+    /// keyed items sorted by key (ties keep their original order, matching pairing by occurrence), then
+    /// unkeyed items in original order. Non-compound and empty lists keep their order.
+    /// </summary>
+    public IEnumerable<NbtTag> CanonicalItems(NbtList list)
+    {
+        if (list.Count == 0 || list.ListType != NbtTagType.Compound) return list;
+        var keyed = new List<(string Key, int Index)>();
+        var unkeyed = new List<int>();
+        for (int i = 0; i < list.Count; i++)
+        {
+            var key = KeyOf((NbtCompound)list[i]);
+            if (key is null) unkeyed.Add(i); else keyed.Add((key, i));
+        }
+        if (keyed.Count == 0) return list;
+        keyed.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key) is var c && c != 0 ? c : a.Index.CompareTo(b.Index));
+        return keyed.Select(k => list[k.Index]).Concat(unkeyed.Select(i => list[i]));
     }
 }

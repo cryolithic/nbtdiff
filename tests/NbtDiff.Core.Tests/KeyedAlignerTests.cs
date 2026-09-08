@@ -36,12 +36,14 @@ public class KeyedAlignerTests
     }
 
     [Fact]
-    public void Reorder_IsTheDocumentedHashDiffDisagreement()
+    public void Reorder_HashAgreesOnlyWhenHasherIsKeyedToo()
     {
-        // The hasher sees list order as content; the keyed aligner deliberately does not.
+        // Positional hashing sees list order as content; keyed hashing (what the scan uses when the
+        // keyed aligner is on) visits items in key order and agrees with the keyed differ.
         var a = Root(Entity(1), Entity(2));
         var b = Root(Entity(2), Entity(1));
         Assert.NotEqual(NbtCanonicalHasher.Hash(a), NbtCanonicalHasher.Hash(b));
+        Assert.Equal(NbtCanonicalHasher.Hash(a, keyedLists: KeyedAligner.Default), NbtCanonicalHasher.Hash(b, keyedLists: KeyedAligner.Default));
         Assert.False(NbtDiffer.Diff(a, b, Keyed).HasChanges);
         Assert.True(NbtDiffer.Diff(a, b, Indexed).HasChanges);
     }

@@ -10,6 +10,10 @@ public sealed record DiffOptions(bool CompoundOrderMatters = false, IListAligner
     public static readonly DiffOptions Default = new();
     public IListAligner Aligner => ListAligner ?? IndexAligner.Instance;
     public TagIgnoreSet Ignored => IgnoredTags ?? TagIgnoreSet.Default;
+    /// <summary>The aligner as the hasher needs it: the <see cref="KeyedAligner"/> in use, or null for positional lists.</summary>
+    public KeyedAligner? KeyedLists => ListAligner as KeyedAligner;
+    /// <summary>Keyed list matching with every other option at its default.</summary>
+    public static readonly DiffOptions Keyed = new(ListAligner: KeyedAligner.Default);
 }
 
 /// <summary>Pairs items of two lists. A null index on one side means the item exists only on the other.</summary>

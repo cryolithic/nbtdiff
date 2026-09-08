@@ -128,7 +128,7 @@ public class SettingsTests
     {
         using var d = new TempDir();
         var store = new SettingsStore(d.File("settings.json"));
-        store.TrySave(new AppSettings { CompoundOrderMatters = true });
+        store.TrySave(new AppSettings { CompoundOrderMatters = true, UseKeyedAligner = false });
         var settings = new SettingsService(store);
 
         var vm = new FileCompareViewModel(new TagPairSource("t", new fNbt.NbtCompound(""), new fNbt.NbtCompound("")), new ImmediateUiDispatcher(), settings);

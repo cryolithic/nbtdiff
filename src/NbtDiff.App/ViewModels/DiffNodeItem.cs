@@ -25,7 +25,10 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
     /// <summary>Pre-order position in the whole tree; changed nodes are navigated in this order.</summary>
     public int DfsIndex { get; private set; }
 
-    public string Name => Node.Name.Length == 0 ? "(root)" : Node.Name;
+    /// <summary>Row label: the tag name, or for a compound list item its index plus identity, e.g. <c>[3]: "minecraft:zombie"</c>.</summary>
+    public string Name => Node.Name.Length == 0 ? "(root)" : ItemLabel is { } l ? $"{Node.Name}: {l}" : Node.Name;
+    /// <summary>Identity of a compound list item (id / Name, UUID, Slot, or x,y,z position); <c>left → right</c> when the sides disagree. Null for other rows.</summary>
+    public string? ItemLabel { get; }
     public string Path => Node.Path;
     public DiffKind Kind => Node.Kind;
     public bool IsChanged => Node.Kind != DiffKind.Unchanged;
@@ -62,6 +65,33 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
         TypeText = TypeDescription(node);
         (LeftValueText, LeftToolTip) = ValueText(node.Left, node.Array);
         (RightValueText, RightToolTip) = ValueText(node.Right, node.Array);
+        if (node.Name.StartsWith('['))
+        {
+            string? l = IdentityOf(node.Left as NbtCompound), r = IdentityOf(node.Right as NbtCompound);
+            ItemLabel = l is null ? r : r is null || l == r ? l : $"{l} → {r}";
+        }
+    }
+
+    /// <summary>What a collapsed entity / block entity / item should read as: its id or Name (quoted), else UUID, else Slot; plus its block position when it has one.</summary>
+    public static string? IdentityOf(NbtCompound? item)
+    {
+        if (item is null) return null;
+        string? head = null;
+        if (item.TryGet("id", out NbtTag id)) head = SnbtWriter.WriteValue(id);
+        else if (item.TryGet("Name", out NbtTag name)) head = SnbtWriter.WriteValue(name);
+        else if (item.TryGet("UUID", out NbtTag uuid)) head = SnbtWriter.WriteValue(uuid);
+        else if (item.TryGet("Slot", out NbtTag slot)) head = "Slot " + SnbtWriter.WriteValue(slot);
+
+        string? pos = item.TryGet("x", out NbtInt x) && item.TryGet("y", out NbtInt y) && item.TryGet("z", out NbtInt z)
+            ? $"({x.Value}, {y.Value}, {z.Value})"
+            : null;
+        return (head, pos) switch
+        {
+            (null, null) => null,
+            (null, _) => pos,
+            (_, null) => head,
+            _ => $"{head} @ {pos}",
+        };
     }
 
     public static DiffNodeItem Build(DiffNode root)

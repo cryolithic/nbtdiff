@@ -213,11 +213,41 @@ public class FileCompareViewModelTests
         var left = new NbtCompound("") { new NbtList("Entities", NbtTagType.Compound) { Entity("minecraft:cow", 10), Entity("minecraft:pig", 8) } };
         var right = new NbtCompound("") { new NbtList("Entities", NbtTagType.Compound) { Entity("minecraft:pig", 8), Entity("minecraft:cow", 10) } };
         var vm = await Loaded(left, right);
+        Assert.True(vm.UseKeyedAligner);              // keyed matching is the default
+        Assert.Equal("No differences", vm.SummaryText);
+
+        vm.UseKeyedAligner = false;
+        await vm.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.NotEqual("No differences", vm.SummaryText);
 
         vm.UseKeyedAligner = true;
         await vm.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Equal("No differences", vm.SummaryText);
+    }
+
+    [Fact]
+    public async Task ListItems_ShowIdentityInName()
+    {
+        NbtCompound Entity(string id, int n) => new() { new NbtString("id", id), new NbtIntArray("UUID", [n, n, n, n]) };
+        var left = new NbtCompound("")
+        {
+            new NbtList("Entities", NbtTagType.Compound) { Entity("minecraft:cow", 1), Entity("minecraft:pig", 2) },
+            new NbtList("block_entities", NbtTagType.Compound) { new NbtCompound { new NbtString("id", "minecraft:chest"), new NbtInt("x", 1), new NbtInt("y", 64), new NbtInt("z", -3) } },
+            new NbtList("plain", NbtTagType.Int) { new NbtInt(7) },
+            new NbtList("bare", NbtTagType.Compound) { new NbtCompound { new NbtInt("v", 1) } },
+        };
+        var right = (NbtCompound)left.Clone();
+        ((NbtString)((NbtCompound)((NbtList)right["Entities"])[1])["id"]).Value = "minecraft:sheep";
+
+        var vm = await Loaded(left, right);
+        vm.ShowUnchanged = true;
+        var byPath = vm.Root!.Descendants().ToDictionary(i => i.Path);
+        Assert.Equal("[0]: \"minecraft:cow\"", byPath["Entities/[0]"].Name);
+        Assert.Equal("[1]: \"minecraft:pig\" → \"minecraft:sheep\"", byPath["Entities/[1]"].Name);
+        Assert.Equal("[0]: \"minecraft:chest\" @ (1, 64, -3)", byPath["block_entities/[0]"].Name);
+        Assert.Equal("[0]", byPath["plain/[0]"].Name);
+        Assert.Equal("[0]", byPath["bare/[0]"].Name);
+        Assert.Null(byPath["Entities"].ItemLabel);
     }
 
     [Fact]

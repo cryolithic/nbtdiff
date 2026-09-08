@@ -7,10 +7,15 @@ namespace NbtDiff.Core;
 
 /// <summary>Default <see cref="IFingerprinter"/> over the local file system.</summary>
 /// <param name="ignoredTags">Tag paths excluded from deep hashes; null means <see cref="TagIgnoreSet.Default"/>.</param>
-public sealed class Fingerprinter(bool compoundOrderMatters = false, TagIgnoreSet? ignoredTags = null) : IFingerprinter
+/// <param name="keyedLists">Hash compound list items in key order (reordered entities are not a change); null means positional.</param>
+public sealed class Fingerprinter(bool compoundOrderMatters = false, TagIgnoreSet? ignoredTags = null, KeyedAligner? keyedLists = null) : IFingerprinter
 {
     private readonly TagIgnoreSet _ignored = ignoredTags ?? TagIgnoreSet.Default;
     private const int FileBufferSize = 1 << 16;
+
+    /// <summary>A fingerprinter whose deep tier agrees with <paramref name="options"/>.</summary>
+    public static Fingerprinter For(CompareOptions options) =>
+        new(options.CompoundOrderMatters, options.EffectiveIgnoredTags, options.KeyedListAligner);
     private static readonly ArrayPool<byte> ChunkPool = ArrayPool<byte>.Create(ChunkRef.MaxInlinePayload, maxArraysPerBucket: 64);
 
     public async ValueTask<LoadResult<FileFingerprint>> QuickAsync(string path, FileKind kind, CancellationToken ct = default)
@@ -47,7 +52,7 @@ public sealed class Fingerprinter(bool compoundOrderMatters = false, TagIgnoreSe
                     var doc = NbtDocument.Load(path);
                     if (!doc.Ok) return LoadResult<FileFingerprint>.Fail(doc.Failure!);
                     ct.ThrowIfCancellationRequested();
-                    ulong hash = NbtCanonicalHasher.Hash(doc.Value!.Root, compoundOrderMatters, _ignored);
+                    ulong hash = NbtCanonicalHasher.Hash(doc.Value!.Root, compoundOrderMatters, _ignored, keyedLists);
                     return LoadResult<FileFingerprint>.Success(new FileFingerprint(kind, FingerprintTier.Deep, new FileInfo(path).Length, hash));
                 }
 
@@ -107,7 +112,7 @@ public sealed class Fingerprinter(bool compoundOrderMatters = false, TagIgnoreSe
                     if (!nbt.Ok)
                         errors[(chunk.X, chunk.Z)] = nbt.Failure!.ToShortString();
                     else
-                        hashes[(chunk.X, chunk.Z)] = NbtCanonicalHasher.Hash(nbt.Value!, compoundOrderMatters, _ignored);
+                        hashes[(chunk.X, chunk.Z)] = NbtCanonicalHasher.Hash(nbt.Value!, compoundOrderMatters, _ignored, keyedLists);
                 }
             }
         }

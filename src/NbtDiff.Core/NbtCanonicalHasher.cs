@@ -14,18 +14,21 @@ namespace NbtDiff.Core;
 public static class NbtCanonicalHasher
 {
     /// <param name="ignoredTags">Compound keys to skip (default <see cref="TagIgnoreSet.Default"/>); pass <see cref="TagIgnoreSet.Empty"/> to hash everything.</param>
-    public static ulong Hash(NbtTag tag, bool compoundOrderMatters = false, TagIgnoreSet? ignoredTags = null)
+    /// <param name="keyedLists">When given, compound list items are hashed in key order (see <see cref="KeyedAligner.CanonicalItems"/>) so a reordered entity list hashes equal; must match the differ's aligner.</param>
+    public static ulong Hash(NbtTag tag, bool compoundOrderMatters = false, TagIgnoreSet? ignoredTags = null, KeyedAligner? keyedLists = null)
     {
         var h = new XxHash64();
-        Append(h, tag, compoundOrderMatters, (ignoredTags ?? TagIgnoreSet.Default).Root);
+        Append(h, tag, new Walk(compoundOrderMatters, keyedLists), (ignoredTags ?? TagIgnoreSet.Default).Root);
         return h.GetCurrentHashAsUInt64();
     }
+
+    private readonly record struct Walk(bool Ordered, KeyedAligner? Keyed);
 
     /// <summary>Children of a compound in canonical (ordinal key) order — shared with the differ.</summary>
     public static IEnumerable<NbtTag> CanonicalChildren(NbtCompound compound, bool compoundOrderMatters = false) =>
         compoundOrderMatters ? compound.Tags : compound.Tags.OrderBy(t => t.Name, StringComparer.Ordinal);
 
-    private static void Append(XxHash64 h, NbtTag tag, bool ordered, TagIgnoreSet.Node? ignore)
+    private static void Append(XxHash64 h, NbtTag tag, Walk w, TagIgnoreSet.Node? ignore)
     {
         Span<byte> scratch = stackalloc byte[8];
         scratch[0] = (byte)tag.TagType;
@@ -79,19 +82,19 @@ public static class NbtCanonicalHasher
                 scratch[0] = (byte)(list.Count == 0 ? NbtTagType.End : list.ListType);
                 h.Append(scratch[..1]);
                 AppendLength(h, list.Count);
-                foreach (var item in list)
-                    Append(h, item, ordered, ignore);   // lists are transparent to ignore paths
+                foreach (var item in w.Keyed is null ? list : w.Keyed.CanonicalItems(list))
+                    Append(h, item, w, ignore);   // lists are transparent to ignore paths
                 break;
             case NbtCompound compound:
             {
                 // Ignored keys are left out of the count as well, so "present but ignored" equals "absent".
                 var kept = ignore is null
-                    ? CanonicalChildren(compound, ordered)
-                    : CanonicalChildren(compound, ordered).Where(c => !ignore.Ignores(c.Name));
+                    ? CanonicalChildren(compound, w.Ordered)
+                    : CanonicalChildren(compound, w.Ordered).Where(c => !ignore.Ignores(c.Name));
                 var children = kept as IReadOnlyCollection<NbtTag> ?? kept.ToList();
                 AppendLength(h, children.Count);
                 foreach (var child in children)
-                    Append(h, child, ordered, ignore?.Child(child.Name));
+                    Append(h, child, w, ignore?.Child(child.Name));
                 break;
             }
             default:

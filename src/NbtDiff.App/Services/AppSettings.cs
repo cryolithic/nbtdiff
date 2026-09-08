@@ -20,7 +20,7 @@ public sealed class AppSettings
     public List<RecentPair> RecentPairs { get; set; } = [];
     public bool DeepVerify { get; set; } = true;
     public bool CompoundOrderMatters { get; set; }
-    public bool UseKeyedAligner { get; set; }
+    public bool UseKeyedAligner { get; set; } = true;
     public List<string> ExcludeGlobs { get; set; } = ["session.lock"];
     /// <summary>Tag paths that are not content (default <c>LastUpdate</c>); an empty list ignores nothing.</summary>
     public List<string> IgnoredTags { get; set; } = [.. TagIgnoreSet.DefaultPaths];
@@ -38,7 +38,9 @@ public sealed class AppSettings
         if (RecentPairs.Count > MaxRecent) RecentPairs.RemoveRange(MaxRecent, RecentPairs.Count - MaxRecent);
     }
 
-    public CompareOptions ToCompareOptions() => new(DeepVerify, CompoundOrderMatters, ExcludeGlobs, IgnoredTags: IgnoredTags);
+    public CompareOptions ToCompareOptions() => new(DeepVerify, CompoundOrderMatters, ExcludeGlobs, IgnoredTags: IgnoredTags, KeyedLists: UseKeyedAligner);
+    /// <summary>Diff options for the file/chunk views, consistent with what the scan hashed.</summary>
+    public DiffOptions ToDiffOptions() => ToCompareOptions().ToDiffOptions();
 
     /// <summary>Repairs anything a hand-edited or partial file left null or out of range.</summary>
     internal void Sanitize()

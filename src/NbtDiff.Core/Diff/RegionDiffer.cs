@@ -81,7 +81,7 @@ public static class RegionDiffer
         var rn = rc.ParseNbt(rp.Value);
         if (!rn.Ok) return new ChunkDiffCell(lc.X, lc.Z, ChunkDiffStatus.Error, rn.Failure!.ToShortString());
 
-        bool same = NbtCanonicalHasher.Hash(ln.Value!, options.CompoundOrderMatters, options.Ignored) == NbtCanonicalHasher.Hash(rn.Value!, options.CompoundOrderMatters, options.Ignored);
+        bool same = NbtCanonicalHasher.Hash(ln.Value!, options.CompoundOrderMatters, options.Ignored, options.KeyedLists) == NbtCanonicalHasher.Hash(rn.Value!, options.CompoundOrderMatters, options.Ignored, options.KeyedLists);
         return new ChunkDiffCell(lc.X, lc.Z, same ? ChunkDiffStatus.Same : ChunkDiffStatus.Different);
     }
 

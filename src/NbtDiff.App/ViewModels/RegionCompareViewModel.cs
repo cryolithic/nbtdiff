@@ -80,7 +80,7 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
                 if (error is null && left is null && right is null)
                     error = "Neither region file exists";
                 if (error is null)
-                    cells = RegionDiffer.Diff(left, right, DiffOptions.Default, _leftFp, _rightFp);
+                    cells = RegionDiffer.Diff(left, right, (_settings?.Current ?? new AppSettings()).ToDiffOptions(), _leftFp, _rightFp);
             }
             catch (Exception e)
             {

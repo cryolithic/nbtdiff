@@ -6,6 +6,9 @@
         Title="{Binding WindowTitle}"
         Width="1200" Height="720"
         MinWidth="640" MinHeight="400">
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Escape" Command="{Binding BackCommand}" />
+  </Window.KeyBindings>
   <DockPanel>
     <Border DockPanel.Dock="Top" IsVisible="{Binding CanGoBack}" Padding="8,4"
             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">

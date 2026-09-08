@@ -44,6 +44,8 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     [ObservableProperty] private string _leftPath = "";
     [ObservableProperty] private string _rightPath = "";
     [ObservableProperty] private bool _deepVerify = true;
+    /// <summary>Match compound list items by identity (entity UUID, block-entity position, …) so reordered lists are not differences. Persisted; also used by the file/chunk views.</summary>
+    [ObservableProperty] private bool _useKeyedAligner = true;
     /// <summary>Comma-separated tag paths that are not content (persisted). Applies to the next compare and to file/chunk views.</summary>
     [ObservableProperty] private string _ignoredTagsText = "";
     [ObservableProperty] private RowFilter _filter = RowFilter.All;
@@ -69,6 +71,7 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         _settings = settings ?? new SettingsService(null);
         _injectedFingerprinter = fingerprinter;
         _deepVerify = _settings.Current.DeepVerify;
+        _useKeyedAligner = _settings.Current.UseKeyedAligner;
         _ignoredTagsText = string.Join(", ", _settings.Current.IgnoredTags);
         RefreshRecent();
     }
@@ -83,6 +86,12 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     partial void OnDeepVerifyChanged(bool value)
     {
         _settings.Current.DeepVerify = value;
+        _settings.Save();
+    }
+
+    partial void OnUseKeyedAlignerChanged(bool value)
+    {
+        _settings.Current.UseKeyedAligner = value;
         _settings.Save();
     }
 
@@ -125,7 +134,7 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         {
             var options = _settings.Current.ToCompareOptions() with { DeepVerify = DeepVerify };
             // Built per compare so edited ignore tags / key-order settings take effect without a restart.
-            var comparer = new DirectoryComparer(_injectedFingerprinter ?? new Fingerprinter(options.CompoundOrderMatters, options.EffectiveIgnoredTags), options);
+            var comparer = new DirectoryComparer(_injectedFingerprinter ?? Fingerprinter.For(options), options);
             root = comparer.Prepare(left, right);
         }
         catch (Exception e)
@@ -213,8 +222,8 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
             ProgressFraction = p.Fraction;
             // Tier 2 is a small tail after thousands of Tier-1 files, so a percentage would read 100% while it runs.
             string where = p.Tier1Complete && p.Tier2Queued > 0
-                ? $"verifying {p.Tier2Done}/{p.Tier2Queued}"
-                : $"{(_lastChangedDir is { Length: > 0 } d ? $"scanning {d}/" : "scanning")} ({p.Fraction:P0})";
+                ? $"pass 2 of 2 — verifying content {p.Tier2Done}/{p.Tier2Queued}"
+                : $"pass 1 of 2 — hashing bytes{(_lastChangedDir is { Length: > 0 } d ? $" in {d}/" : "")} ({p.Fraction:P0})";
             StatusText = $"{summary} · {where}";
         }
         else

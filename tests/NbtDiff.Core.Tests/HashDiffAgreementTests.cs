@@ -10,11 +10,12 @@ public class HashDiffAgreementTests
     private static void AssertAgree(NbtTag a, NbtTag b)
     {
         foreach (bool ordered in new[] { false, true })
+        foreach (var keyed in new KeyedAligner?[] { null, KeyedAligner.Default })
         {
-            bool hashEqual = NbtCanonicalHasher.Hash(a, ordered) == NbtCanonicalHasher.Hash(b, ordered);
-            var diff = NbtDiffer.Diff(a, b, new DiffOptions(CompoundOrderMatters: ordered));
+            bool hashEqual = NbtCanonicalHasher.Hash(a, ordered, keyedLists: keyed) == NbtCanonicalHasher.Hash(b, ordered, keyedLists: keyed);
+            var diff = NbtDiffer.Diff(a, b, new DiffOptions(CompoundOrderMatters: ordered, ListAligner: keyed));
             Assert.True(hashEqual == (diff.ChangedDescendants == 0),
-                $"ordered={ordered}: hashEqual={hashEqual} but ChangedDescendants={diff.ChangedDescendants}; first change: {diff.Descendants().FirstOrDefault(n => n.Kind != DiffKind.Unchanged)}");
+                $"ordered={ordered} keyed={keyed is not null}: hashEqual={hashEqual} but ChangedDescendants={diff.ChangedDescendants}; first change: {diff.Descendants().FirstOrDefault(n => n.Kind != DiffKind.Unchanged)}");
         }
     }
 

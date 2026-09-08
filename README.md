@@ -37,7 +37,13 @@ verified · blue = left only · purple = right only · struck through = unreadab
 
 Chunks re-saved by Minecraft with only their `LastUpdate` tick changed are not differences: the
 "Ignore tags" box lists tag paths that are not content (default `LastUpdate, Level/LastUpdate`;
-add `InhabitedTime` if you want that ignored too).
+add `InhabitedTime` if you want that ignored too). Reordered entity / block-entity / item lists are
+not differences either: "Match list items by key" (on by default) pairs entities by UUID, block
+entities by position and items by id, in the scan, the chunk grid and the tag view alike.
+
+The status bar says which pass is running: `pass 1 of 2 — hashing bytes` reads every file once
+without decompressing; `pass 2 of 2 — verifying content n/m` parses only the files whose bytes
+differed.
 
 Options (deep verify, key-order sensitivity, matching list items by UUID/id, exclude globs,
 ignored tags, window placement, recent pairs) persist in `%APPDATA%\nbtdiff\settings.json` on Windows and

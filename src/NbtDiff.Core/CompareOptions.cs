@@ -5,13 +5,19 @@ namespace NbtDiff.Core;
 /// <param name="ExcludeGlobs">Patterns to skip; null means the default (<c>session.lock</c>). See <see cref="GlobMatcher"/>.</param>
 /// <param name="MaxParallelism">Worker count; 0 uses the processor count.</param>
 /// <param name="IgnoredTags">Tag paths that are not content (see <see cref="TagIgnoreSet"/>); null means <see cref="TagIgnoreSet.DefaultPaths"/> (<c>LastUpdate</c>).</param>
+/// <param name="KeyedLists">Match compound list items by identity (entity UUID, block-entity position, …) so a reordered list is not a change. Default on.</param>
 public sealed record CompareOptions(
     bool DeepVerify = true,
     bool CompoundOrderMatters = false,
     IReadOnlyList<string>? ExcludeGlobs = null,
     int MaxParallelism = 0,
-    IReadOnlyList<string>? IgnoredTags = null)
+    IReadOnlyList<string>? IgnoredTags = null,
+    bool KeyedLists = true)
 {
+    /// <summary>The aligner the deep tier hashes with; null when lists are positional.</summary>
+    public KeyedAligner? KeyedListAligner => KeyedLists ? KeyedAligner.Default : null;
+    /// <summary>Diff options consistent with these compare options.</summary>
+    public DiffOptions ToDiffOptions() => new(CompoundOrderMatters, KeyedListAligner, EffectiveIgnoredTags);
     public static readonly IReadOnlyList<string> DefaultExcludes = ["session.lock"];
 
     public IReadOnlyList<string> EffectiveExcludes => ExcludeGlobs ?? DefaultExcludes;

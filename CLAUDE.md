@@ -187,6 +187,11 @@ Things discovered while building that are not visible from the code. Append here
   DESIGN §4.3). `InhabitedTime` is *not* ignored (it only moves when players are nearby); users
   can add it in the "Ignore tags" box.
 
+- 2026-09-08: keyed list matching is on by default everywhere (`CompareOptions.KeyedLists`,
+  `AppSettings.UseKeyedAligner`); the hasher takes the same `KeyedAligner` so scan / grid / tag view
+  agree. If a real world still shows a reordered list as changed, the item type is probably missing
+  from `KeyedAligner.DefaultKeyNames` — extend the key list, don't special-case the differ.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

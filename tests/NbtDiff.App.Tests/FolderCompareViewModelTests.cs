@@ -117,7 +117,7 @@ public class FolderCompareViewModelTests
             vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.StatusText)) texts.Add(vm.StatusText); };
             vm.CompareCommand.Execute(null);
             Assert.Contains("pending", texts[0]);
-            Assert.Contains("scanning", texts[0]);
+            Assert.Contains("pass 1 of 2", texts[0]);
             await vm.ScanCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
             Assert.Equal("3 same", vm.StatusText);
             Assert.All(vm.Tree.Rows, i => Assert.Equal(RowStatus.Same, i.Status));

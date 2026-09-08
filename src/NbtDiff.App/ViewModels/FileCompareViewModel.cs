@@ -69,6 +69,8 @@ public sealed partial class FileCompareViewModel : ViewModelBase
 
     /// <summary>Tag paths excluded from the diff come from settings (the folder view edits them).</summary>
     public DiffOptions Options => new(CompoundOrderMatters, UseKeyedAligner ? KeyedAligner.Default : null, _settings.Current.IgnoreSet);
+    // Note: the scan and region grid hash with the same aligner (settings.UseKeyedAligner), so a chunk
+    // that shows as Different there also shows changes here, and vice versa.
 
     public bool HasChunkNavigation => _navigation is { Chunks.Count: > 0 };
     public ChunkNavigation? Navigation => _navigation;
