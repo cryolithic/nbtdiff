@@ -201,6 +201,10 @@ Note for S5/S6: `RowStatus` (scan) and `ChunkDiffStatus` (region grid) are delib
 
 ## S5 — Avalonia shell and folder compare view
 
+**Status:** done 2026-09-08 (agent, merged as dab16a1). Deviations: one `DataGrid` with grouped
+Left | status | Right columns instead of two synchronized grids; `FlatTreeSource<T>` over an
+`IFlatTreeNode<T>` interface; in-window error placeholder instead of a modal. DESIGN §5.0/5.1 updated.
+
 **Needs:** S3 interfaces (implementation may still be in progress — build against
 `IFingerprinter` with a fake if needed) and S0's App project.
 

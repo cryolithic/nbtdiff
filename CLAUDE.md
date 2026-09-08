@@ -153,6 +153,14 @@ Things discovered while building that are not visible from the code. Append here
 - 2026-09-08 (S3+S4 ran as parallel agents in git worktrees; both merged without conflict because
   S4 was told to define `ChunkDiffStatus` rather than depend on S3's `RowStatus`.)
 
+- 2026-09-08 (S5): to see the app on a real world pair: `NBTDIFF_DEMO_DIR=<dir> dotnet test
+  tests/NbtDiff.App.Tests --filter DemoWorld` writes `<dir>/left` and `<dir>/right`, then
+  `nbtdiff.exe <left> <right>`. Screen capture on this 200 % display needs
+  `SetProcessDpiAwarenessContext(-4)` + `PrintWindow(hwnd, hdc, 2)`; `CopyFromScreen` returns black.
+- 2026-09-08 (S5): Avalonia 12 marks `TextBox.Watermark` obsolete (warning → build error here);
+  use the replacement the XAML compiler names. `App.Tests` has `ImmediateUiDispatcher` (runs
+  `Post` inline, `Tick()` simulates a coalescer flush) and `FakeDialogService`.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

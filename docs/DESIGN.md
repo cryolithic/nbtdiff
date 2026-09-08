@@ -398,33 +398,39 @@ that are `LeftOnly`/`RightOnly`/`Error` (mixed-status folders are omitted as red
 
 MVVM with `CommunityToolkit.Mvvm`. One window, a navigation stack of three views.
 
-### 5.0 Trees are flattened lists
+### 5.0 Trees are flattened lists (as shipped in S5)
 
-Every tree in the UI (folder rows, diff nodes) is shown through `Avalonia.Controls.DataGrid`,
-which virtualizes rows but is not hierarchical. A `FlatTreeSource<T>` in the App project projects a
-tree into an `ObservableCollection` of visible rows — each row carries `Depth`, `IsExpanded`,
-`HasChildren` — and rebuilds the affected slice on expand/collapse. The first column is a template
-with an indent proportional to `Depth` and an expander glyph. Because both folder panes bind to the
-**same** flat collection, they always have identical row counts, so synchronizing scroll and
-expansion is just sharing the source and mirroring `ScrollViewer.Offset`.
+Every tree in the UI is shown through `Avalonia.Controls.DataGrid`, which virtualizes rows but is
+not hierarchical. `FlatTreeSource<T>` (`src/NbtDiff.App/Tree/`) projects a tree of
+`IFlatTreeNode<T>` (the node carries `Depth`, `IsExpanded`, `HasVisibleChildren`) into an
+`ObservableCollection` of visible rows, rebuilding only the affected slice on expand/collapse and
+switching to a bulk Reset above 256 rows. It also has `Refilter()`, `ExpandToDepth`, `Reveal`. The
+first column is a template with an indent proportional to `Depth` and an expander glyph.
+`ChangeCoalescer<T>` collects worker-thread change notifications, dedupes by item, and flushes to
+the UI thread through `IUiDispatcher` at ~30 Hz, with a final flush after completion.
 
-### 5.1 FolderCompareView
+### 5.1 FolderCompareView (as shipped in S5)
 
-Two `DataGrid` panes bound to the **same** `FlatTreeSource<CompareRow>`; left pane shows `Left`
-columns, right pane shows `Right` columns. Expand/collapse and vertical scroll are synchronized
-through the shared source (§5.0). Columns: Name, Size, Modified, Status glyph.
+**One `DataGrid`, not two.** Columns are grouped Left (name, size, modified) | status glyph |
+Right (name, size, modified) over a single `FlatTreeSource<CompareRowItem>`; because the row set is
+identical by construction there is nothing to synchronize, and it reads as Beyond Compare's two
+panes with a centre status strip. Row colour comes from a `DataGridRow` style bound to a
+`Status → Brush` converter (translucent, theme-neutral) so status changes recolour live.
 
-Row colors: Same = default, Different = red, ProbablyDifferent = red with a dimmed glyph,
-LeftOnly/RightOnly = blue/purple with an empty placeholder row on the other side, Error =
-strikethrough with tooltip.
+Row states: Same = default, Different = red, ProbablyDifferent = red with a dimmed glyph,
+LeftOnly/RightOnly = blue/purple with `—` in the empty side, Error = strikethrough + `!` with tooltip.
+Folder colour follows S3's derived folder status.
 
-Toolbar: left path, right path, browse buttons, Compare/Cancel, filter chips (Show: All /
-Differences / Same / Orphans), Deep-verify toggle, Export report.
-Status bar: `12 differ · 340 same · 3 left-only · 1 right-only · scanning region/ (43%)`.
+Toolbar: left/right path boxes, Browse (via `IDialogService` over `IStorageProvider`),
+Compare/Cancel, filter chips (All / Differences / Same / Orphans — "Differences" hides `Pending`),
+Deep-verify toggle, Export text / Export JSON (`DiffReport.ToString` to a save-picker path).
+Status bar: `3 differ · 4 same · 1 left-only · 2 right-only · 1 error · scanning region/ (43%)`
+— the "scanning" directory is the parent of the last changed file (S3 exposes no current dir).
 
-Double-click or Enter on a file row opens FileCompareView or RegionCompareView by `FileKind`.
-`Json`/`Text` rows open a plain side-by-side text view (read-only, line-diff via a small LCS —
-stage 7 only). `Binary` rows show sizes and hashes only.
+Double-click or Enter on a file row raises `FolderCompareViewModel.NavigationRequested(CompareRow)`;
+`MainWindowViewModel.Push/Back` is the navigation stack and views map to view models through
+`Application.DataTemplates` in `App.axaml` (one `DataTemplate` per view model). Startup errors show
+an in-window placeholder, not a modal.
 
 ### 5.2 RegionCompareView
 
@@ -433,7 +439,7 @@ a cell → FileCompareView for that chunk pair. Arrow keys move the selection; E
 
 ### 5.3 FileCompareView
 
-A **single aligned tree** rather than two panes: one `DataGrid` over `FlatTreeSource<DiffNode>` with columns
+A **single aligned tree** rather than two panes: one `DataGrid` over `FlatTreeSource<…>` wrapping `DiffNode` with columns
 Name · Type · Left value · Right value · Status. Unchanged subtrees are collapsed by default;
 "Show unchanged" expands them. F7/F8 = previous/next changed node (depth-first over
 `ChangedDescendants > 0`). Arrays render `int[4096] · differs at [17]` and, on selection, a
