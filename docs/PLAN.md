@@ -261,6 +261,11 @@ shows `Level/InhabitedTime` as the only change, with unchanged siblings collapse
 
 ## S7 — Polish, performance, packaging
 
+**Status:** done 2026-09-08 (agent, merged as 4d220c4). Text view via a hand-written Myers
+`LineDiffer`; settings in `ApplicationData/nbtdiff/settings.json`; single-file publish profiles +
+tag-triggered CI publish; perf numbers in DESIGN §7. Not exercised: Linux binary, window-placement
+restore end to end. DESIGN §5.5/§7 updated.
+
 **Needs:** S6.
 
 **Produces**
@@ -280,6 +285,10 @@ meets §7.
 ---
 
 ## S8 — Optional extras (each independent)
+
+Remaining after 2026-09-08: CLI summary mode, SNBT copy view, chunk-coordinate jump box. Also
+open: a UI to edit exclude globs (persisted but only editable in settings.json), and Linux
+verification of the published binary.
 
 - ~~`KeyedAligner` for lists of compounds~~ — done 2026-09-08 (`ffbea0e`); the UI option to
   select it is still open (S6/S7).

@@ -4,10 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-**This repository is empty.** Nothing has been written yet. This file records the decisions and
-research that precede the first commit, so the first implementation session does not have to
-re-derive them. Update it — especially "Planned layout" and the build commands — as soon as real
-code lands.
+Stages S0–S7 of `docs/PLAN.md` are done (2026-09-08); the app scans worlds, diffs regions, chunks,
+NBT files and text, persists settings, and publishes as a single file. Open items are listed under
+S8 in the plan. Tests: 532 (156 Nbt / 283 Core / 93 App).
 
 ## Where to look first
 
@@ -41,15 +40,15 @@ This is why the app is not a pure CLI: dumping a world diff to stdout is unusabl
 Rejected: WinForms (Windows-only), Terminal.Gui (lower fidelity than the Beyond Compare model),
 `ProjectReference`/submodule against nbt-studio (drags in `NbtStudio.csproj`'s WinForms dependency).
 
-## Planned layout
+## Layout
 
 ```
 src/
-  NbtDiff.Nbt/    vendored fNbt + trimmed loaders (NbtFile, NbtFolder, RegionFile, Chunk)
-  NbtDiff.Core/   scan, hash, diff engine — no UI references
-  NbtDiff.App/    Avalonia shell
-tests/
-third_party/NOTICE  attribution for tryashtar (nbt-studio, fNbt fork)
+  NbtDiff.Nbt/    vendored fNbt (fNbt/) + original loaders, SNBT parser/writer
+  NbtDiff.Core/   FileClassifier, Fingerprinter, DirectoryComparer, Diff/ (NbtDiffer, RegionDiffer, aligners, LineDiffer)
+  NbtDiff.App/    Avalonia 12: Tree/ (FlatTreeSource, ChangeCoalescer), Services/, ViewModels/, Views/
+tests/            TestFixtures (WorldBuilder, RegionWriter), one test project per src project
+third_party/NOTICE
 ```
 
 `NbtDiff.Core` must stay UI-free so the engine is testable headlessly and a scriptable entry point
@@ -62,6 +61,9 @@ dotnet build                                  # warnings are errors (Directory.B
 dotnet run --project src/NbtDiff.App -- <left> <right>
 dotnet test
 dotnet test tests/NbtDiff.Core.Tests          # one project
+dotnet publish src/NbtDiff.App -p:PublishProfile=win-x64   # publish/win-x64/nbtdiff.exe (also linux-x64)
+NBTDIFF_DEMO_DIR=<dir> dotnet test tests/NbtDiff.App.Tests --filter DemoWorld   # demo world pair
+NBTDIFF_PERF_DIR=<dir> dotnet test tests/NbtDiff.Core.Tests --filter PerfScan   # perf harness
 dotnet test --filter "FullyQualifiedName~RegionFileTests"   # single test class
 dotnet test --filter "FullyQualifiedName~RegionFileTests.LoadsLazily"   # single test
 ```
@@ -168,6 +170,14 @@ Things discovered while building that are not visible from the code. Append here
 - 2026-09-08 (S6): the `DataGrid` selection brush overrides the row status tint on the selected
   row (cosmetic; the glyph still shows). `RegionCompareViewModel` keeps both `RegionFile`s open
   while a chunk view is on top of it; `MainWindowViewModel.Back` disposes `IDisposable` views.
+
+- 2026-09-08 (S7): `CopyDebugSymbolFilesFromPackages=false` does not remove SkiaSharp/HarfBuzz
+  native `.pdb`s (105 MB, they are native assets); `NbtDiff.App.csproj` strips them with a target
+  after `ComputeResolvedFilesToPublishList`. Single-file output is 31 MB (win) / 26 MB (linux).
+- 2026-09-08 (S7): perf numbers live in DESIGN §7; Tier 1 runs at page-cache speed (up to 3 GB/s
+  on regions) with ~600 B/chunk retained. Launch/screenshot script for the UI:
+  scratchpad `s7-launch.ps1` (`-Delay` ≥ 4 s or the window is not up; `PostKey` VK codes, PageDown
+  0x22; `End` only moves columns in a DataGrid).
 
 ## Related local repos
 

@@ -473,6 +473,25 @@ placeholder until the S7 text view exists; different kinds → error view. One e
 missing path opens the compare with an absent side (region: all cells Left/RightOnly). No args →
 empty folder view. Errors are in-window placeholder views, not modals.
 
+### 5.5 TextCompareView and settings (as shipped in S7)
+
+`Json`/`Text` rows (and two such files at startup) open `TextCompareViewModel`: both files are read
+off the UI thread, line-diffed by `NbtDiff.Core.Diff.LineDiffer` — linear-space Myers (middle
+snake); deletes and inserts inside one hunk are paired into `Changed` rows, leftovers are one-sided;
+CRLF/CR/LF are equal and a trailing-newline difference is ignored; pinned by a randomized test
+against a DP LCS — and shown as a side-by-side `DataGrid` (left no · left text · right no · right
+text) with row colouring and wrapping F7/F8 hunk navigation. Files over 32 MB are refused with a
+message. `Binary` rows keep the placeholder but show both sizes and XxHash64s.
+
+`SettingsService` persists `AppSettings` as JSON in `ApplicationData/nbtdiff/settings.json`
+(atomic temp+rename; a corrupt or partial file falls back to defaults field by field): recent
+path pairs (max 10, a "Recent…" `ComboBox` in the folder view that fills both paths and compares),
+`CompareOptions`, the aligner choice, and window placement (restored only onto a screen that still
+exists). Options save on every toggle/compare; placement on close.
+
+Progress text during Tier 2 is `verifying n/m` rather than a percentage: with 10k files and a few
+dozen Tier-2 items the fraction rounds to 100 % while work remains.
+
 ## 6. Test fixtures
 
 `NbtDiff.TestFixtures` builds worlds in a temp directory with deterministic content, using the
@@ -489,14 +508,25 @@ w.Defragment().Write(rightDir4);                       // same content, differen
 
 These four mutations are the acceptance corpus for "no false differences".
 
-## 7. Performance targets
+## 7. Performance targets — measured (S7)
 
-Measured on a real ~2 GB world (not checked in; path configured locally):
+Synthetic world, 64 regions × 1024 chunks per side (512 MB on disk) plus 10,000 small player
+`.dat` files per side; right side fully recompressed (GZip) with reversed sector order, 16 chunks
+mutated, one region missing, one extra, 10 player files changed. 16 cores, NVMe, warm page cache.
+Reproduce: `NBTDIFF_PERF_DIR=%TEMP%\nbtdiff-perf dotnet test tests/NbtDiff.Core.Tests --filter PerfScan`
+(writes ~512 MB in ~5 s the first time; numbers append to `perf-results.txt` there).
 
-- Tier 1 scan: bounded by disk read throughput; no decompression, no allocation per chunk beyond
-  a pooled buffer.
-- Memory: the scan holds `CompareRow` + fingerprint per file (a few hundred bytes × file count),
-  never tag trees. Tag trees exist only for the one file pair currently open.
-- UI: `DataGrid` row virtualization over the flattened list keeps 100k+ visible rows scrollable;
-  collapsed subtrees cost nothing. `RowChanged` events are batched
-  on the dispatcher (coalesce to ~30 Hz) so a fast scan does not starve rendering.
+| Run | Wall | Throughput | Allocated | Peak working set |
+| --- | --- | --- | --- | --- |
+| Tier 1 only (10,130 files, 131k chunks) | 0.87 s cold / 0.56 s warm | 11.6k–18k files/s, 591–918 MB/s | 68–84 MB (≈600 B/chunk: hashes, dictionaries, rows) | 137 MB |
+| Regions only, Tier 1 | 0.16–0.20 s | 2.5–3.2 GB/s | — | — |
+| Tier 1 + Tier 2 | 1.54 s | — | 3.5 GB transient (parsing 131k chunks); trees not retained | 154 MB |
+
+Result: 10,038 same · 26 differ (16 chunks + 10 players) · 1 left-only · 1 right-only — exactly the
+injected changes. Tier 1 is bounded by the page cache / disk as intended; no hot spot was worth
+changing beyond reusing one `XxHash64` per region. The original targets stand:
+
+- Tier 1 never decompresses; one pooled buffer per worker.
+- Memory is rows + fingerprints; tag trees exist only for the pair currently open.
+- `DataGrid` virtualization over the flattened list keeps a 10k-row expanded folder scrollable;
+  `RowChanged` is coalesced at ~30 Hz.
