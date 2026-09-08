@@ -316,7 +316,7 @@ public sealed record ArrayDifference(int FirstDifference, int LeftLength, int Ri
 public sealed class DiffNode
 {
     public string Name { get; }              // compound key, or "[i]" for list index
-    public string Path { get; }              // slash-joined, "" for the root
+    public string Path { get; }              // slash-joined, indices as segments: Entities/[1]/Health; "" for root
     public NbtTagType? LeftType { get; } public NbtTagType? RightType { get; }
     public NbtTag? Left { get; } public NbtTag? Right { get; }
     public DiffKind Kind { get; }
@@ -352,6 +352,13 @@ Matching rules:
   element types are `TypeChanged`; empty lists never differ by element type (the hasher's rule);
   empty vs non-empty yields `Added`/`Removed` items. A future `KeyedAligner` (match compounds by
   `UUID`/`id`) slots in here — but hash⇔diff agreement is only guaranteed with `IndexAligner`.
+- **Keyed lists** (`KeyedAligner`, shipped as the first S8 item): for lists of compounds, each
+  item's key is the first present name from `["UUID", "id", "Name", "Slot"]` (configurable),
+  rendered as `"{TagType}:{compact SNBT}"`; equal keys pair in order of occurrence, surplus keyed
+  items are one-sided, unkeyed items pair by position among themselves. Output order: every left
+  index in order, then unmatched right indices. Non-compound or empty lists delegate to
+  `IndexAligner`. Caveat: a reorder hashes differently but diffs clean; and a right-only item's
+  `[i]` name uses its right index, so `DiffNode.Path` can repeat within one list.
 - **Arrays** (byte/int/long): leaf values; `ValueChanged` carries `ArrayDifference`.
 - **Scalars**: `ValueChanged` on inequality. Floats compare by bits, matching the hasher.
 

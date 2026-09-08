@@ -145,8 +145,11 @@ Things discovered while building that are not visible from the code. Append here
   coalescer must dedupe by row. Use `Prepare` → subscribe → `Run`, not `Start`, or early events
   are missed. `GatedFingerprinter` in `tests/NbtDiff.Core.Tests/ScanSupport.cs` freezes the
   pipeline mid-scan for deterministic `ProbablyDifferent` assertions; reuse it for view-model tests.
-- 2026-09-08 (S4): hash⇔diff agreement holds only with `IndexAligner`; a keyed list aligner
-  reports equality the hasher does not. `DiffNode.Path` (`a/b[3]/c`) is ready for navigation.
+- 2026-09-08 (S4/S8): hash⇔diff agreement holds only with `IndexAligner`; `KeyedAligner`
+  reports equality the hasher does not (pinned by a test). `DiffNode.Path` is slash-joined with
+  list indices as their own segment: `Entities/[1]/Health`. Under `KeyedAligner` a right-only
+  item is named by its *right* index, so paths are **not unique** — S6 navigation must key on
+  node identity, not `Path`.
 - 2026-09-08 (S3+S4 ran as parallel agents in git worktrees; both merged without conflict because
   S4 was told to define `ChunkDiffStatus` rather than depend on S3's `RowStatus`.)
 

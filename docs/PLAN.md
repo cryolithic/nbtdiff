@@ -272,8 +272,8 @@ meets §7.
 
 ## S8 — Optional extras (each independent)
 
-- `KeyedAligner` for lists of compounds (match by `UUID`, then `id`, then index) with a UI
-  option; expected to make entity/block-entity diffs readable.
+- ~~`KeyedAligner` for lists of compounds~~ — done 2026-09-08 (`ffbea0e`); the UI option to
+  select it is still open (S6/S7).
 - `NbtDiff.Cli` project: `nbtdiff a b --summary [--json]`, exit code 1 on differences — a thin
   wrapper over `DirectoryComparer` + `DiffReport`.
 - SNBT text view of a single tag on both sides for copy/paste.
