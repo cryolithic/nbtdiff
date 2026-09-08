@@ -134,6 +134,10 @@ DESIGN §4.1–4.3 updated.
 
 ## S3 — Directory scan and comparison tree
 
+**Status:** done 2026-09-08 (parallel agent, branch merged as 15c11fc). Deviations: `Prepare`/`Run`
+split added; `Progress` is a snapshot + event; `FileSide` is a class with a settable fingerprint;
+counts are files-only; dir-vs-file name clash is an `Error` row. DESIGN §4.4/§4.6 updated.
+
 **Needs:** S2.
 
 **Produces** in `src/NbtDiff.Core/`
@@ -164,6 +168,11 @@ DESIGN §4.1–4.3 updated.
 
 ## S4 — Tag diff and region diff
 
+**Status:** done 2026-09-08 (parallel agent, branch merged as 28e3257). Deviations: `DiffKind` gained
+`Moved`/`Renamed`; `ChangedDescendants` includes the node itself; region diff uses its own
+`ChunkDiffStatus` and takes `FileFingerprint?`; `DiffChunk` returns `LoadResult<DiffNode>`. DESIGN §4.5
+updated.
+
 **Needs:** S1 (and S2 for `NbtCanonicalHasher`; take it as a dependency, do not reimplement).
 
 **Produces** in `src/NbtDiff.Core/`
@@ -183,6 +192,8 @@ DESIGN §4.1–4.3 updated.
   `Unchanged`.
 - `RegionDiffer.Diff` on the `Mutate` world: exactly one cell `Different`; `DiffChunk` on that
   cell shows the single `ValueChanged` path `InhabitedTime`.
+
+Note for S5/S6: `RowStatus` (scan) and `ChunkDiffStatus` (region grid) are deliberately separate enums.
 
 **Done when:** tests green.
 

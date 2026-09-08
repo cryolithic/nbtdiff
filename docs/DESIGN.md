@@ -245,7 +245,7 @@ same walk order is used by the differ (`NbtCanonicalHasher.CanonicalChildren` is
 equal" and "diff empty" always agree — there is one test asserting exactly that over the fixture
 corpus.
 
-### 4.4 Directory scan
+### 4.4 Directory scan (as shipped in S3)
 
 ```csharp
 public enum RowStatus { Pending, Same, ProbablyDifferent, Different, LeftOnly, RightOnly, Error }
@@ -254,103 +254,138 @@ public sealed class CompareRow
 {
     public string RelativePath { get; }      // forward slashes, root = ""
     public string Name { get; }
-    public FileKind Kind { get; }
+    public FileKind Kind { get; }            // Directory for folder rows
     public FileSide? Left { get; }           // null when missing on that side
     public FileSide? Right { get; }
     public RowStatus Status { get; }         // mutated by the scanner, observed by the UI
     public string? Error { get; }
     public IReadOnlyList<CompareRow> Children { get; }   // directories only
-    public RowCounts Counts { get; }         // aggregated over descendants; folders derive Status from this
+    public RowCounts Counts { get; }         // files only, aggregated over descendants
 }
-public sealed record FileSide(string FullPath, long Size, DateTime Modified, FileFingerprint? Fingerprint);
+public sealed class FileSide { string FullPath; long Size; DateTime Modified; FileFingerprint? Fingerprint; }  // fingerprint set later
 
 public sealed record CompareOptions(
     bool DeepVerify = true,
     bool CompoundOrderMatters = false,
-    IReadOnlyList<string>? ExcludeGlobs = null,   // default: session.lock
+    IReadOnlyList<string>? ExcludeGlobs = null,   // default: ["session.lock"]; * ? ** ; case-insensitive
     int MaxParallelism = 0);                       // 0 → ProcessorCount
 
-public sealed class DirectoryComparer
+public sealed class DirectoryComparer(IFingerprinter fp, CompareOptions options)
 {
-    public DirectoryComparer(IFingerprinter fp, CompareOptions options);
-
-    /// Builds the full tree synchronously (directory listing only, cheap), then streams status
-    /// updates as fingerprints complete. The returned root is live: rows mutate in place and
-    /// raise RowChanged. Folder rows update their Counts as children resolve.
-    public CompareRoot Start(string leftRoot, string rightRoot, CancellationToken ct);
+    public CompareRoot Prepare(string leftRoot, string rightRoot);          // tree only, all rows Pending
+    public CompareRoot Start(string leftRoot, string rightRoot, CancellationToken ct); // Prepare + Run
 }
-
 public sealed class CompareRoot
 {
     public CompareRow Root { get; }
-    public event Action<CompareRow> RowChanged;
-    public IProgress<ScanProgress> Progress { get; }
-    public Task Completion { get; }
+    public event Action<CompareRow> RowChanged;      // worker threads; fires for the row and each ancestor
+    public ScanProgress Progress { get; }            // snapshot: Files, Tier1Done, Tier2Queued, Tier2Done, Completed, Cancelled, Fraction
+    public event Action ProgressChanged;
+    public Task Completion { get; }                  // completes (not faults) on cancel; IsCancelled
+    public Task Run(CancellationToken ct);
 }
 ```
 
+UI callers use `Prepare` → subscribe → `Run`; with `Start` the first `RowChanged` can fire before
+the subscription exists.
+
 Pairing rule: rows are keyed by relative path, compared **ordinally and case-sensitively** (Linux
 is case-sensitive; a Windows world copied to Linux must not silently merge `Region` and `region`).
-Files are sorted with a logical/natural comparer so `r.2.0` sorts before `r.10.0`.
+Directories sort before files, then `NaturalStringComparer` so `r.2.0` precedes `r.10.0`. A name
+that is a directory on one side and a file on the other is a single `Error` row of kind
+`Directory`. One-sided directories are fully enumerated so counts are right.
 
-Pipeline: `Channel<CompareRow>` fed by the tree walk → N workers (`MaxParallelism`) running Tier 1
-→ a second channel for Tier 2 → `RowChanged` raised on a worker thread. The UI does the dispatcher
-hop; Core stays thread-agnostic. Cancellation leaves rows `Pending`, never half-written.
+Status rules: Tier 1 `Same` is final; a Tier-1 mismatch is `ProbablyDifferent` and queues Tier 2
+(when `DeepVerify`), except kind mismatches and `Binary` files, which are final `Different`. Tier 2
+resolves to `Same`/`Different`. A failed fingerprint or a region with `ChunkErrors` on either side
+is `Error`. Folder status: one-sided → `LeftOnly`/`RightOnly`; else `Different` if any descendant
+is Different/LeftOnly/RightOnly (orphans make a folder differ, as in Beyond Compare); else
+`ProbablyDifferent` > `Error` > `Pending` > `Same`.
 
-### 4.5 Tag diff
+Pipeline: `Channel<CompareRow>` fed by the tree walk → `MaxParallelism` workers running Tier 1 → a
+second channel for Tier 2 → `RowChanged` raised on a worker thread. The UI does the dispatcher hop;
+Core stays thread-agnostic. Cancellation leaves rows `Pending`, never half-written. Per-row
+failures become `Error` rows; only a bug faults `Completion`.
+
+### 4.5 Tag diff (as shipped in S4, `NbtDiff.Core.Diff`)
 
 ```csharp
-public enum DiffKind { Unchanged, Added, Removed, ValueChanged, TypeChanged }
+public enum DiffKind { Unchanged, Added, Removed, ValueChanged, TypeChanged, Moved, Renamed }
+public sealed record ArrayDifference(int FirstDifference, int LeftLength, int RightLength);
 
 public sealed class DiffNode
 {
     public string Name { get; }              // compound key, or "[i]" for list index
-    public NbtTagType? LeftType { get; }
-    public NbtTagType? RightType { get; }
-    public NbtTag? Left { get; }
-    public NbtTag? Right { get; }
+    public string Path { get; }              // slash-joined, "" for the root
+    public NbtTagType? LeftType { get; } public NbtTagType? RightType { get; }
+    public NbtTag? Left { get; } public NbtTag? Right { get; }
     public DiffKind Kind { get; }
+    public ArrayDifference? Array { get; }   // for array ValueChanged
     public IReadOnlyList<DiffNode> Children { get; }
-    public int ChangedDescendants { get; }   // 0 ⇒ subtree can be collapsed as unchanged
+    public int ChangedDescendants { get; }   // nodes in the subtree INCLUDING this one with Kind != Unchanged
+    public bool HasChanges { get; }
+    public IEnumerable<DiffNode> Descendants();
 }
+
+public sealed record DiffOptions(bool CompoundOrderMatters = false, IListAligner? ListAligner = null); // default IndexAligner
+public interface IListAligner { IReadOnlyList<(int? Left, int? Right)> Align(NbtList left, NbtList right); }
 
 public static class NbtDiffer
 {
     public static DiffNode Diff(NbtTag? left, NbtTag? right, DiffOptions options);
+    public static bool ScalarEquals(NbtTag a, NbtTag b);
 }
 ```
 
 Matching rules:
 
-- **Compound**: children matched by key. Missing on one side → `Added`/`Removed`. Present on both
-  with different tag type → `TypeChanged` (no recursion). Key order ignored unless
-  `CompoundOrderMatters`.
-- **List**: matched by index (v1). Length mismatch → trailing items are `Added`/`Removed`. A
-  pluggable `IListAligner` exists from the start, with `IndexAligner` as the only implementation;
-  `KeyedAligner` (match compounds inside a list by a chosen child such as `UUID` or `id`) is a
-  later stage and slots in without touching the differ.
-- **Arrays** (byte/int/long): leaf values. `ValueChanged` carries the first differing index and
-  the length pair so the UI can summarize without materializing a per-element diff.
+- **Compound**: children matched by key; emitted in ordinal key order (union of both sides) when
+  order does not matter, else left order then right-only keys. Missing on one side →
+  `Added`/`Removed`, with the whole one-sided subtree expanded and marked the same kind. Different
+  tag type → `TypeChanged`, no recursion. With `CompoundOrderMatters`, a common key whose rank among
+  the *common* keys differs is `Moved` (insertions/removals do not flag later siblings;
+  `ValueChanged`/`TypeChanged` win over `Moved`).
+- **Root name**: a mismatch (including null vs `""`) is `Renamed` on the root; children are still
+  matched by key.
+- **List**: aligned by `IListAligner`; `IndexAligner` pairs by index and marks the tail
+  `Added`/`Removed`. Child names use `[leftIndex ?? rightIndex]`. Non-empty lists with different
+  element types are `TypeChanged`; empty lists never differ by element type (the hasher's rule);
+  empty vs non-empty yields `Added`/`Removed` items. A future `KeyedAligner` (match compounds by
+  `UUID`/`id`) slots in here — but hash⇔diff agreement is only guaranteed with `IndexAligner`.
+- **Arrays** (byte/int/long): leaf values; `ValueChanged` carries `ArrayDifference`.
 - **Scalars**: `ValueChanged` on inequality. Floats compare by bits, matching the hasher.
+
+Invariant, tested over the fixture corpus in both order modes:
+`NbtCanonicalHasher.Hash(a, o) == Hash(b, o)` ⇔ `Diff(a, b, o).ChangedDescendants == 0`.
 
 Region-level diff:
 
 ```csharp
-public sealed record ChunkDiffCell(int X, int Z, RowStatus Status);   // 32×32 grid, sparse
+public enum ChunkDiffStatus { Same, Different, LeftOnly, RightOnly, Error }
+public sealed record ChunkDiffCell(int X, int Z, ChunkDiffStatus Status, string? Error);
 public static class RegionDiffer
 {
-    public static IReadOnlyList<ChunkDiffCell> Diff(RegionFile? left, RegionFile? right, CompareOptions o);
-    public static DiffNode DiffChunk(RegionFile? left, RegionFile? right, int x, int z, DiffOptions o);
+    // Sparse 32×32. Equal fingerprint hashes are Same at any tier; unequal hashes are Different only
+    // when both fingerprints are Deep, otherwise the chunk is parsed and compared canonically. With
+    // no fingerprints, byte-equal compressed payloads short-circuit to Same without decompressing.
+    public static IReadOnlyList<ChunkDiffCell> Diff(RegionFile? left, RegionFile? right, DiffOptions options,
+                                                    FileFingerprint? leftFp = null, FileFingerprint? rightFp = null);
+    // Parses exactly the two requested chunks. One side missing → whole-tree Added/Removed; both
+    // missing, or a read failure → LoadResult failure (chunk failure attached as an Attempt).
+    public static LoadResult<DiffNode> DiffChunk(RegionFile? left, RegionFile? right, int x, int z, DiffOptions options);
 }
 ```
 
-`RegionDiffer.Diff` reuses the fingerprints already computed by the scan when available, so opening
-a region row costs nothing extra; `DiffChunk` parses exactly the two chunks requested.
+Any unreadable side (corrupt header, LZ4, parse failure) is an `Error` cell with a message, even
+when the other side is absent. Pass whatever fingerprint the scan already has — quick-tier ones are
+enough to skip parsing every chunk whose bytes match.
 
-### 4.6 Reporting
+### 4.6 Reporting (as shipped in S3)
 
-`DiffReport.Write(CompareRoot, TextWriter, ReportFormat.{Text,Json})` — a flat list of non-`Same`
-rows with counts. Used by the export command and, later, by any CLI entry point.
+`DiffReport.Write(CompareRoot, TextWriter, ReportFormat.Text | Json)` and
+`DiffReport.ToString(root, format)`. Reportable rows: files with status ≠ `Same`, plus directories
+that are `LeftOnly`/`RightOnly`/`Error` (mixed-status folders are omitted as redundant). JSON uses
+`System.Text.Json` with enums as strings. Used by the export command and, later, any CLI entry point.
 
 ## 5. NbtDiff.App — Avalonia shell
 
