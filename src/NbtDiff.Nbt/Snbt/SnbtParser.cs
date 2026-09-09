@@ -80,9 +80,7 @@ public sealed partial class SnbtParser
             var child = ParseValue(key);
             if (compound.Contains(key)) Fail($"Duplicate key '{key}'");
             compound.Add(child);
-            SkipWhitespace();
-            if (TryConsume('}')) return compound;
-            Expect(',');
+            if (ClosedAfterSeparator('}')) return compound;
         }
     }
 
@@ -90,7 +88,12 @@ public sealed partial class SnbtParser
     {
         if (AtEnd) Fail("Unexpected end of input, expected a key");
         if (Peek is '"' or '\'') return ParseQuotedString();
-        string key = ReadUnquotedRun();
+        // Keys are not numbers, so they may contain anything up to the ':' except whitespace and
+        // structural characters — real FTB lang files have non-ASCII letters pasted into keys.
+        int start = _pos;
+        while (!AtEnd && !char.IsWhiteSpace(Peek) && Peek is not (':' or '{' or '}' or '[' or ']' or ',' or '"' or '\''))
+            _pos++;
+        string key = _text[start.._pos];
         if (key.Length == 0) Fail("Expected a key");
         return key;
     }
@@ -116,9 +119,7 @@ public sealed partial class SnbtParser
             if (list.Count > 0 && item.TagType != list.ListType)
                 Fail($"List of {list.ListType} cannot contain a {item.TagType}", itemStart);
             list.Add(item);
-            SkipWhitespace();
-            if (TryConsume(']')) return list;
-            Expect(',');
+            if (ClosedAfterSeparator(']')) return list;
         }
     }
 
@@ -149,9 +150,7 @@ public sealed partial class SnbtParser
                         Fail($"Int array element {v} out of range", itemStart); break;
                 }
                 values.Add(v);
-                SkipWhitespace();
-                if (TryConsume(']')) break;
-                Expect(',');
+                if (ClosedAfterSeparator(']')) break;
             }
         }
         return kind switch
@@ -210,7 +209,12 @@ public sealed partial class SnbtParser
         {
             if (AtEnd) Fail("Unterminated string");
             char c = Next();
-            if (c == quote) return sb.ToString();
+            if (c == quote)
+            {
+                if (StringEndsHere()) return sb.ToString();
+                sb.Append(c);   // unescaped quote inside the text (see StringEndsHere)
+                continue;
+            }
             if (c != '\\')
             {
                 sb.Append(c);
@@ -253,9 +257,77 @@ public sealed partial class SnbtParser
     private char Peek => _text[_pos];
     private char Next() => _text[_pos++];
 
-    private void SkipWhitespace()
+    /// <summary>Skips whitespace; true when a line break was crossed (a separator in FTB's dialect).</summary>
+    private bool SkipWhitespace()
     {
-        while (!AtEnd && char.IsWhiteSpace(Peek)) _pos++;
+        bool newline = false;
+        while (!AtEnd)
+        {
+            if (char.IsWhiteSpace(Peek))
+            {
+                if (Peek is '\n' or '\r') newline = true;
+                _pos++;
+            }
+            else if (Peek == '#')
+            {
+                // FTB config files carry '#' line comments; '#' cannot start a value, so this is unambiguous.
+                while (!AtEnd && Peek is not ('\n' or '\r')) _pos++;
+                newline = true;
+            }
+            else break;
+        }
+        return newline;
+    }
+
+    // A closing quote is only the end of the string when what follows (after spaces) can follow a
+    // string: a separator, a closing bracket, ':' (it was a key), a comment, a line break, or the end.
+    // Hand-edited FTB lang files contain unescaped quotes inside text; strict SNBT never has a quote in
+    // any other position, so treating those as literal changes nothing for valid input.
+    private bool StringEndsHere()
+    {
+        int i = SkipSpaces(_pos);
+        if (i >= _text.Length) return true;
+        char c = _text[i];
+        if (c is ']' or '}' or ':' or '#' or '\n' or '\r') return true;
+        if (c != ',') return false;
+
+        // After a comma the next thing must look like an entry: a quoted or nested value, a close, a
+        // line break, or a bare token that is a key (followed by ':') or a whole value (followed by a
+        // separator). `"alto", la Tiza Azul."` fails this — `la` is followed by more words — so the
+        // quote before the comma is text.
+        i = SkipSpaces(i + 1);
+        if (i >= _text.Length) return true;
+        c = _text[i];
+        if (c is '"' or '\'' or '{' or '[' or ']' or '}' or '\n' or '\r' or '#') return true;
+        while (i < _text.Length && !char.IsWhiteSpace(_text[i]) && _text[i] is not (':' or ',' or ']' or '}' or '"' or '\''))
+            i++;
+        i = SkipSpaces(i);
+        return i >= _text.Length || _text[i] is ':' or ',' or ']' or '}' or '\n' or '\r' or '#';
+    }
+
+    private int SkipSpaces(int i)
+    {
+        while (i < _text.Length && (_text[i] == ' ' || _text[i] == '\t')) i++;
+        return i;
+    }
+
+    /// <summary>
+    /// After an entry: returns true if the container closed. Otherwise requires a separator — a comma
+    /// (Minecraft) or a line break (FTB Quests/Teams write comma-less SNBT) — and leaves the position at
+    /// the next entry. A trailing comma before the closing bracket is accepted.
+    /// </summary>
+    private bool ClosedAfterSeparator(char close)
+    {
+        bool newline = SkipWhitespace();
+        if (AtEnd) Fail($"Unexpected end of input, expected '{close}'");
+        if (TryConsume(close)) return true;
+        if (TryConsume(','))
+        {
+            SkipWhitespace();
+            return TryConsume(close);
+        }
+        if (!newline) Fail($"Expected ',' or '{close}'");
+        return false;
     }
 
     private bool TryConsume(char c)

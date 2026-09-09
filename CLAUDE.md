@@ -207,6 +207,13 @@ Things discovered while building that are not visible from the code. Append here
   the file length, never by declared sectors × 4096. `RegionWriteOptions.PadLastSector = false`
   reproduces the real layout in fixtures.
 
+- 2026-09-08: real `.snbt` files in worlds are FTB's dialect, not Minecraft's — no commas, `#`
+  comments, non-ASCII in unquoted keys, unescaped quotes in translated text. Test parser changes
+  against a real corpus: `NBTDIFF_SNBT_CORPUS=K:/git/ATM-10 dotnet test tests/NbtDiff.Nbt.Tests`.
+- Tooling: the Bash tool rewrites `
+`-style escapes inside long commands; edit C# containing
+  char/string escapes with the Edit/Write tools, not python heredocs.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

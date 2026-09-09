@@ -75,15 +75,24 @@ public sealed class NbtDocument
         LoadResult<NbtDocument>.Try("Load as SNBT", () =>
         {
             // Cheap rejection before reading a possibly huge binary file as text.
-            int first;
-            do { first = stream.ReadByte(); } while (first is ' ' or '\t' or '\r' or '\n');
+            int first = stream.ReadByte();
             if (first == 0xEF) // UTF-8 BOM
             {
                 stream.ReadByte(); stream.ReadByte();
-                do { first = stream.ReadByte(); } while (first is ' ' or '\t' or '\r' or '\n');
+                first = stream.ReadByte();
+            }
+            while (true)
+            {
+                if (first is ' ' or '\t' or '\r' or '\n') { first = stream.ReadByte(); continue; }
+                if (first == '#')   // FTB config files open with '#' comment lines
+                {
+                    do first = stream.ReadByte(); while (first is not (-1 or '\n'));
+                    continue;
+                }
+                break;
             }
             if (first != '{')
-                throw new FormatException("Text does not start with '{'");
+                throw new FormatException("Text does not start with '{' (after optional whitespace and # comments)");
 
             stream.Position = 0;
             using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);

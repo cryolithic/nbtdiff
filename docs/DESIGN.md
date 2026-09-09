@@ -164,9 +164,15 @@ Behavior that differs from upstream nbt-studio (each is a test in `NbtDiff.Nbt.T
 
 SNBT: the parser accepts Java Edition syntax up to 1.21.4 — quoted/unquoted keys, both quote
 styles with `\\ \" \' \n \t \r \b \f \s \uXXXX` escapes, numeric suffixes, `true`/`false`,
-typed arrays (integer literals of any width, range-checked). Not supported: 1.21.5+ extensions
-(heterogeneous lists, hex/binary literals, `bool()`-style operations). The writer emits compact or
-indented text; arrays always stay on one line.
+typed arrays (integer literals of any width, range-checked) — plus **FTB's dialect**, which modded
+worlds contain (FTB Quests/Teams data, FTB config): line breaks as separators with no commas,
+trailing commas, `#` line comments (also before the root), unquoted keys with any non-structural
+characters (translators paste non-ASCII into ids), and unescaped quotes inside text (a closing
+quote only ends a string when what follows can follow a string; after a comma, the next thing must
+look like an entry). `SnbtCorpusTests` parses every `.snbt` under `NBTDIFF_SNBT_CORPUS` and
+round-trips it through the writer — 117/117 of a modpack's FTB files pass. Not supported: 1.21.5+
+extensions (heterogeneous lists, hex/binary literals, `bool()`-style operations). The writer
+emits strict Minecraft syntax (commas, quoted strings); arrays always stay on one line.
 
 ## 4. NbtDiff.Core
 

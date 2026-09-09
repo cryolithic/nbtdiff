@@ -162,9 +162,10 @@ public class SnbtParserTests
     }
 
     [Theory]
-    [InlineData("{a:1,}", "Expected a key")]
     [InlineData("{a:1", "Unexpected end of input")]
     [InlineData("{a}", "Expected ':'")]
+    [InlineData("{a:1 b:2}", "Expected ',' or '}'")]
+    [InlineData("[1 2]", "Expected ',' or ']'")]
     [InlineData("{a:1,a:2}", "Duplicate key")]
     [InlineData("[1,\"a\"]", "List of Int cannot contain a String")]
     [InlineData("[1,2", "Unexpected end of input")]
@@ -203,6 +204,56 @@ public class SnbtParserTests
         Assert.True(SnbtParser.TryParse("{}", out tag, out error));
         Assert.NotNull(tag);
         Assert.Null(error);
+    }
+
+    [Fact]
+    public void FtbDialect_NewlinesSeparateEntries()
+    {
+        // FTB Quests/Teams write SNBT with no commas at all, indented, booleans and d/L suffixes.
+        const string text = """
+            {
+                default_hide_dependency_lines: false
+                filename: "chapter"
+                icon: {
+                    id: "modularrouters:creative_module"
+                }
+                images: [
+                    {
+                        height: 2.0d
+                        rotation: -90.0d
+                    }
+                    {
+                        height: 1.0d
+                    }
+                ]
+                dependencies: [
+                    "1A2B"
+                    "3C4D"
+                ]
+                progress: [I;
+                    1
+                    2
+                ]
+                empty: [ ]
+            }
+            """;
+        var c = (NbtCompound)SnbtParser.Parse(text);
+        Assert.Equal(0, c.Get<NbtByte>("default_hide_dependency_lines")!.Value);
+        Assert.Equal("chapter", c.Get<NbtString>("filename")!.Value);
+        Assert.Equal(2, c.Get<NbtList>("images")!.Count);
+        Assert.Equal(-90.0, ((NbtCompound)c.Get<NbtList>("images")![0]).Get<NbtDouble>("rotation")!.Value);
+        Assert.Equal(["1A2B", "3C4D"], c.Get<NbtList>("dependencies")!.Select(t => ((NbtString)t).Value));
+        Assert.Equal([1, 2], c.Get<NbtIntArray>("progress")!.Value);
+        Assert.Empty(c.Get<NbtList>("empty")!);
+    }
+
+    [Theory]
+    [InlineData("{a:1,}")]
+    [InlineData("[1,2,]")]
+    [InlineData("[I;1,2,]")]
+    public void TrailingComma_Accepted(string text)
+    {
+        SnbtParser.Parse(text);
     }
 
     [Fact]

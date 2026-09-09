@@ -14,7 +14,7 @@ aborting the scan.
 nbtdiff                              empty folder view
 nbtdiff <left-world> <right-world>   folder compare, scan starts immediately
 nbtdiff <left.mca> <right.mca>       32×32 chunk grid; open a chunk for its tag diff
-nbtdiff <left.dat> <right.dat>       aligned tag tree (also .nbt, .snbt, schematics)
+nbtdiff <left.dat> <right.dat>       aligned tag tree (also .nbt, .snbt incl. FTB's dialect, schematics)
 nbtdiff <left.json> <right.json>     side-by-side line diff (also .txt .properties .log …)
 ```
 
