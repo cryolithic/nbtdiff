@@ -151,8 +151,11 @@ Behavior that differs from upstream nbt-studio (each is a test in `NbtDiff.Nbt.T
 - Zero occupied slots is `Ok` with `ChunkCount == 0`, and so is a **0-byte file** — Minecraft
   leaves those behind for regions it touched but never saved, and two of them compare `Same`.
   A file of 1..8191 bytes is truncated and fails.
-- A bad header slot (inside the header, past EOF, zero sectors) is listed with `HeaderError`; reads
-  of it fail; siblings are unaffected.
+- A bad header slot (inside the header, prefix past EOF, zero sectors) is listed with `HeaderError`;
+  reads of it fail; siblings are unaffected. The declared sector count is **not** checked against the
+  file length: Minecraft does not pad the last chunk of a file to a full sector (seen on every
+  `entities/` region of a real world), so only the 5-byte prefix must fit at open time and the
+  payload's own length prefix is checked against the file when it is read.
 - External chunks resolve `c.<x>.<z>.mcc` from the region's world coords; a region without coords
   in its name fails that read with an explanatory message.
 - Truncation is **not** reliably detectable by parse failure: `DeflateStream` accepts a truncated

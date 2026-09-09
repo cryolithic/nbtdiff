@@ -17,7 +17,7 @@ public sealed class ChunkRef
     /// <summary>Compression scheme byte values as stored in the chunk prefix.</summary>
     public const byte SchemeGZip = 1, SchemeZLib = 2, SchemeNone = 3, SchemeLz4 = 4, SchemeCustom = 127;
     private const byte ExternalFlag = 0x80;
-    private const int PrefixSize = 5;
+    internal const int PrefixSize = 5;
 
     private readonly RegionFile _region;
     private byte _schemeByte;   // 0 until the prefix has been read
@@ -155,6 +155,8 @@ public sealed class ChunkRef
         int maxLength = SectorCount * RegionFile.SectorSize - 4;
         if (length < 1 || length > maxLength)
             throw new InvalidDataException($"length prefix {length} is outside 1..{maxLength} for {SectorCount} sector(s)");
+        if (Offset + 4 + length > _region.Length)
+            throw new InvalidDataException($"length prefix {length} at byte {Offset} runs past the end of the {_region.Length}-byte file");
         if (scheme == 0)
             throw new InvalidDataException("compression scheme byte is 0");
 

@@ -17,7 +17,8 @@ public enum SectorOrder
 }
 
 /// <param name="GapSectors">Empty sectors left between chunks, to simulate fragmentation.</param>
-public sealed record RegionWriteOptions(SectorOrder Order = SectorOrder.Sequential, int GapSectors = 0);
+/// <param name="PadLastSector">False writes the file as Minecraft does: it ends right after the last chunk's bytes, not at a sector boundary.</param>
+public sealed record RegionWriteOptions(SectorOrder Order = SectorOrder.Sequential, int GapSectors = 0, bool PadLastSector = true);
 
 /// <summary>Writes valid Anvil region files from chunk compounds.</summary>
 public static class RegionWriter
@@ -43,6 +44,7 @@ public static class RegionWriter
         ms.SetLength(RegionFile.HeaderSize);
         ms.Position = RegionFile.HeaderSize;
         var header = new byte[RegionFile.HeaderSize];
+        long lastChunkEnd = 0;
 
         foreach (var chunk in ordered)
         {
@@ -78,11 +80,15 @@ public static class RegionWriter
             BinaryPrimitives.WriteUInt32BigEndian(header.AsSpan(SectorSize + slot * 4), chunk.Timestamp);
 
             ms.Write(inline);
+            long end = ms.Position;
             long padded = (long)(sector + sectorCount + options.GapSectors) * SectorSize;
             ms.SetLength(padded);
             ms.Position = padded;
+            lastChunkEnd = end;
         }
 
+        if (!options.PadLastSector && lastChunkEnd > 0)
+            ms.SetLength(lastChunkEnd);
         ms.Position = 0;
         ms.Write(header);
         return ms.ToArray();

@@ -142,6 +142,32 @@ public class RegionFileTests
     }
 
     [Fact]
+    public void UnpaddedLastChunk_IsNotAnError()
+    {
+        // Real worlds (entities/ files especially) end right after the last chunk's bytes; the header still
+        // says "1 sector" for it. That must read fine — it was reported as "unreadable" on 40+ files.
+        var specs = Enumerable.Range(0, 5).Select(i => new ChunkSpec(i, 0, WorldBuilder.MakeChunk(3, i, 0))).ToList();
+        var bytes = RegionWriter.Build(specs, new RegionWriteOptions(PadLastSector: false));
+        Assert.NotEqual(0, bytes.Length % RegionFile.SectorSize);
+
+        using var region = NbtAssert.Ok(RegionFile.Open(new MemoryStream(bytes), "r.0.0.mca"));
+        Assert.All(region.Chunks, c => Assert.False(c.IsCorruptHeader));
+        foreach (var spec in specs)
+            NbtAssert.Equal(spec.Data, NbtAssert.Ok(region[spec.X, spec.Z]!.ReadNbt()));
+    }
+
+    [Fact]
+    public void PayloadRunningPastEof_FailsOnRead_NotOnOpen()
+    {
+        var bytes = RegionWriter.Build([new ChunkSpec(0, 0, WorldBuilder.MakeChunk(3, 0, 0))], new RegionWriteOptions(PadLastSector: false));
+        var cut = bytes[..(bytes.Length - 100)];   // genuinely truncated inside the payload
+        using var region = NbtAssert.Ok(RegionFile.Open(new MemoryStream(cut), "r.0.0.mca"));
+        Assert.False(region[0, 0]!.IsCorruptHeader);
+        var failure = NbtAssert.Failed(region[0, 0]!.ReadCompressedPayload());
+        Assert.Contains("runs past the end", failure.Exception!.Message);
+    }
+
+    [Fact]
     public void CorruptSlot_OffsetInsideHeader()
     {
         var bytes = RegionWriter.Build([new ChunkSpec(0, 0, Tiny(0, 0))]);

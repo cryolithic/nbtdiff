@@ -202,6 +202,11 @@ Things discovered while building that are not visible from the code. Append here
   explains an all-Same grid for a flagged file. `ScanGridConsistencyTests` pins scan ⇔ grid
   agreement over the fixture variants.
 
+- 2026-09-08 (real world): region files are not padded to a sector boundary after the last chunk
+  (every `DIM-1/entities/r.*.mca` ended mid-sector). Validate a chunk by its length prefix against
+  the file length, never by declared sectors × 4096. `RegionWriteOptions.PadLastSector = false`
+  reproduces the real layout in fixtures.
+
 ## Related local repos
 
 - `K:/git/nbt-studio` — the vendoring source (see above).

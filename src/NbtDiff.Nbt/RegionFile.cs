@@ -60,8 +60,11 @@ public sealed class RegionFile : IDisposable
                 headerError = "header entry has zero sectors";
             else if (byteOffset < HeaderSize)
                 headerError = $"header entry points at byte {byteOffset}, inside the header tables";
-            else if (byteOffset + (long)sectorCount * SectorSize > reader.Length)
-                headerError = $"header entry claims {sectorCount} sector(s) at byte {byteOffset} but the file is only {reader.Length} bytes";
+            // Only the 5-byte prefix has to fit here: Minecraft does not pad the last chunk of a file
+            // to a full sector, so the declared sector count routinely runs past EOF. The payload length
+            // is checked against the file when the prefix is read.
+            else if (byteOffset + ChunkRef.PrefixSize > reader.Length)
+                headerError = $"header entry points at byte {byteOffset} but the file is only {reader.Length} bytes";
 
             var chunk = new ChunkRef(this, x, z, byteOffset, sectorCount, timestamp, headerError);
             _slots[i] = chunk;
