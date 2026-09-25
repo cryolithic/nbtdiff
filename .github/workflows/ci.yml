@@ -5,9 +5,19 @@ on:
     branches: ["**"]
     tags: ["v*"]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
   build:
+    name: Build and test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -28,12 +38,17 @@ jobs:
           path: "**/TestResults/*.trx"
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    name: Publish ${{ matrix.rid }}
     needs: build
-    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        rid: [win-x64, linux-x64]
+        include:
+          - rid: win-x64
+            os: windows-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -42,6 +57,29 @@ jobs:
       - run: dotnet publish src/NbtDiff.App -p:PublishProfile=${{ matrix.rid }}
       - uses: actions/upload-artifact@v4
         with:
-          name: nbtdiff-${{ matrix.rid }}-${{ github.ref_name }}
+          name: nbtdiff-${{ matrix.rid }}
           path: publish/${{ matrix.rid }}/
           if-no-files-found: error
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nbtdiff-*
+      - name: Package
+        run: |
+          (cd nbtdiff-win-x64 && zip -r "../nbtdiff-win-x64-${GITHUB_REF_NAME}.zip" .)
+          chmod +x nbtdiff-linux-x64/nbtdiff
+          tar -czf "nbtdiff-linux-x64-${GITHUB_REF_NAME}.tar.gz" -C nbtdiff-linux-x64 .
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes
+          "nbtdiff-win-x64-${GITHUB_REF_NAME}.zip" "nbtdiff-linux-x64-${GITHUB_REF_NAME}.tar.gz"

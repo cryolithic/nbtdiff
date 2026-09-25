@@ -71,7 +71,8 @@ dotnet publish src/NbtDiff.App -p:PublishProfile=win-x64     # → publish/win-x
 dotnet publish src/NbtDiff.App -p:PublishProfile=linux-x64   # → publish/linux-x64/nbtdiff
 ```
 
-CI builds and tests on Windows and Ubuntu on every push, and publishes both binaries as workflow
-artifacts on `v*` tags.
+CI builds and tests on Windows and Ubuntu on every push, then publishes `nbtdiff-win-x64` and
+`nbtdiff-linux-x64` as workflow artifacts. Pushing a `v*` tag also creates a GitHub release with
+both binaries attached.
 
 Design: `docs/DESIGN.md`. Stages: `docs/PLAN.md`. Third-party attribution: `third_party/NOTICE`.
