@@ -37,18 +37,20 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: "**/TestResults/*.trx"
 
+  # Binaries only for master, v* tags and manual runs; other branches and PRs just build and test.
+  # Both RIDs cross-publish from Linux (framework-dependent, no AOT), which is cheaper than Windows.
   publish:
     name: Publish ${{ matrix.rid }}
     needs: build
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/tags/v')
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - rid: win-x64
-            os: windows-latest
-          - rid: linux-x64
-            os: ubuntu-latest
-    runs-on: ${{ matrix.os }}
+        rid: [win-x64, linux-x64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
