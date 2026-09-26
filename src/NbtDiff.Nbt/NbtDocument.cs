@@ -118,6 +118,33 @@ public sealed class NbtDocument
             return new NbtDocument(path, root, new NbtFormatInfo(format, file.FileCompression, bigEndian));
         });
 
+    /// <summary>
+    /// Writes <paramref name="root"/> back to <see cref="Path"/> in the format and compression the
+    /// file was loaded with (SNBT files are rewritten pretty-printed). The first save of a path
+    /// copies the pre-nbtdiff file to <c>&lt;path&gt;.bak</c>; later saves leave that backup alone.
+    /// Bedrock variants are refused rather than risk corrupting their headers.
+    /// </summary>
+    public LoadResult<NbtDocument> Save(NbtCompound root)
+    {
+        if (Format.Format is not (NbtFormat.Snbt or NbtFormat.JavaNbt))
+            return LoadResult<NbtDocument>.Fail($"Saving {Format.Format} files is not supported yet; write the change by hand instead");
+        return LoadResult<NbtDocument>.Try($"Save {Path}", () =>
+        {
+            if (File.Exists(Path) && !File.Exists(Path + ".bak"))
+                File.Copy(Path, Path + ".bak");
+            if (Format.Format == NbtFormat.Snbt)
+            {
+                File.WriteAllText(Path, SnbtWriter.Write(root, SnbtOptions.Pretty));
+            }
+            else
+            {
+                var file = new NbtFile(root) { BigEndian = Format.BigEndian };
+                file.SaveToFile(Path, Format.Compression);
+            }
+            return this;
+        });
+    }
+
     private static bool LooksSuspicious(NbtCompound root)
     {
         if (root.Count == 0) return true;

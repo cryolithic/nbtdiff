@@ -41,6 +41,10 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     /// <summary>Raised when the user opens a file row (double-click / Enter). The shell decides what to show.</summary>
     public event Action<CompareRow>? NavigationRequested;
 
+    /// <summary>Raised when Compare is pressed with two file paths (or a file and a missing path);
+    /// the shell opens the pair's compare view instead of a folder scan.</summary>
+    public event Action<string, string>? FilePairRequested;
+
     [ObservableProperty] private string _leftPath = "";
     [ObservableProperty] private string _rightPath = "";
     [ObservableProperty] private bool _deepVerify = true;
@@ -81,6 +85,13 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         RecentPairs.Clear();
         foreach (var p in _settings.Current.RecentPairs) RecentPairs.Add(p);
         OnPropertyChanged(nameof(HasRecent));
+    }
+
+    private void AddRecentPair(string left, string right)
+    {
+        _settings.Current.AddRecent(left, right);
+        _settings.Save();
+        RefreshRecent();
     }
 
     partial void OnDeepVerifyChanged(bool value)
@@ -126,9 +137,35 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     {
         ErrorMessage = null;
         string left = LeftPath.Trim(), right = RightPath.Trim();
-        if (!Directory.Exists(left)) { ErrorMessage = $"Left folder does not exist: {left}"; return; }
-        if (!Directory.Exists(right)) { ErrorMessage = $"Right folder does not exist: {right}"; return; }
+        bool leftDir = Directory.Exists(left), rightDir = Directory.Exists(right);
+        bool leftFile = File.Exists(left), rightFile = File.Exists(right);
 
+        if (!leftDir && !rightDir && (leftFile || rightFile))
+        {
+            AddRecentPair(left, right);
+            FilePairRequested?.Invoke(left, right);
+            return;
+        }
+        if (leftDir && rightDir)
+        {
+            CompareFolders(left, right);
+        }
+        else if (leftFile || rightFile)
+        {
+            ErrorMessage = "One path is a folder and the other is a file — compare two folders, or two files.";
+        }
+        else if (!leftDir)
+        {
+            ErrorMessage = $"Left path does not exist: {left}";
+        }
+        else
+        {
+            ErrorMessage = $"Right path does not exist: {right}";
+        }
+    }
+
+    private void CompareFolders(string left, string right)
+    {
         CompareRoot root;
         try
         {
@@ -143,9 +180,7 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
             return;
         }
 
-        _settings.Current.AddRecent(left, right);
-        _settings.Save();
-        RefreshRecent();
+        AddRecentPair(left, right);
 
         Current = root;
         OnPropertyChanged(nameof(HasResult));
@@ -235,15 +270,25 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     [RelayCommand]
     private async Task BrowseLeft()
     {
-        var path = await _dialogs.PickFolderAsync("Left folder", LeftPath);
+        var path = await PickAsync("Left", LeftPath);
         if (path is not null) LeftPath = path;
     }
 
     [RelayCommand]
     private async Task BrowseRight()
     {
-        var path = await _dialogs.PickFolderAsync("Right folder", RightPath);
+        var path = await PickAsync("Right", RightPath);
         if (path is not null) RightPath = path;
+    }
+
+    /// <summary>Picks a file when the box holds a file path (so two files can be compared straight
+    /// from here), a folder otherwise — the common case.</summary>
+    private Task<string?> PickAsync(string side, string current)
+    {
+        string path = current.Trim();
+        return File.Exists(path)
+            ? _dialogs.PickOpenFileAsync($"{side} file", path)
+            : _dialogs.PickFolderAsync($"{side} folder", path.Length == 0 ? null : path);
     }
 
     private bool CanExport => Current is not null && !IsScanning;

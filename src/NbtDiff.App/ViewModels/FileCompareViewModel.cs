@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using fNbt;
 using NbtDiff.App.Services;
 using NbtDiff.App.Tree;
 using NbtDiff.Core;
@@ -44,12 +45,28 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasError))] private string? _errorMessage;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasArrayDetail))] private IReadOnlyList<ArrayDetailRow>? _arrayDetail;
-    [ObservableProperty] private DiffNodeItem? _selectedItem;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CopyToLeftCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CopyToRightCommand))]
+    private DiffNodeItem? _selectedItem;
     [ObservableProperty] private string _summaryText = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUnsavedEdits))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _leftModified;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUnsavedEdits))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _rightModified;
+    [ObservableProperty] private string _saveStatusText = "";
 
     public bool HasError => ErrorMessage is not null;
     public bool HasArrayDetail => ArrayDetail is not null;
     public bool HasResult => _root is not null;
+    /// <summary>Either side has WinMerge-style copies that have not been written back yet.</summary>
+    public bool HasUnsavedEdits => LeftModified || RightModified;
+    /// <summary>False for in-memory pairs (tests) — there is nowhere to save those to.</summary>
+    public bool IsSaveable => _source is ISaveableDiffSource;
 
     private readonly ISettingsService _settings;
 
@@ -87,6 +104,11 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     // Next goes to the first changed chunk after it in (z, x) order and Previous to the last before it.
     private void StepChunk(int direction)
     {
+        if (HasUnsavedEdits)
+        {
+            ErrorMessage = "Save your copies first (Ctrl+S) — stepping to another chunk would discard them.";
+            return;
+        }
         if (_navigation is null || _navigation.Chunks.Count == 0) return;
         var chunks = _navigation.Chunks;
         int n = chunks.Count;
@@ -274,6 +296,104 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     {
         Tree.Reveal(target);
         SelectedItem = target;
+    }
+
+    private bool CanCopySelection => SelectedItem is not null && _tags is not null;
+
+    /// <summary>WinMerge-style copy of the selected row's value or subtree from right to left.</summary>
+    [RelayCommand(CanExecute = nameof(CanCopySelection))]
+    private Task CopyToLeft() => Copy(SelectedItem, toRight: false);
+
+    /// <summary>WinMerge-style copy of the selected row's value or subtree from left to right.</summary>
+    [RelayCommand(CanExecute = nameof(CanCopySelection))]
+    private Task CopyToRight() => Copy(SelectedItem, toRight: true);
+
+    private async Task Copy(DiffNodeItem? item, bool toRight)
+    {
+        if (IsBusy || _tags is null || item is null) return;
+        var chain = new List<DiffNode>();
+        for (DiffNodeItem? i = item; i is not null; i = i.Parent) chain.Add(i.Node);
+        chain.Reverse();
+
+        NbtTag? newRoot;
+        try
+        {
+            newRoot = NbtMerger.Copy(chain, toRight);
+        }
+        catch (Exception e)
+        {
+            ErrorMessage = $"Copy failed at {(item.Path.Length == 0 ? "(root)" : item.Path)}: {e.Message}";
+            return;
+        }
+        // Adopt a replaced root: a root-level copy, or containers synthesized for a missing side.
+        if (!ReferenceEquals(toRight ? _tags.Right : _tags.Left, newRoot))
+            _tags = new TagPair(toRight ? _tags.Left : newRoot, toRight ? newRoot : _tags.Right);
+        if (toRight) RightModified = true; else LeftModified = true;
+        SaveStatusText = "";
+
+        var source = toRight ? item.Node.Left : item.Node.Right;
+        await Rediff();
+        // Keep the user's place by the *source tag's identity* — paths repeat under KeyedAligner, so
+        // matching on Path could jump to a different same-path row. A deletion copy has no source;
+        // its row is gone from both sides, so the selection simply stays cleared.
+        if (source is not null)
+        {
+            var again = _root?.Descendants().FirstOrDefault(i => (toRight ? i.Node.Left : i.Node.Right) == source);
+            if (again is not null) Go(again);
+        }
+    }
+
+    private bool CanSave => HasUnsavedEdits && IsSaveable;
+
+    /// <summary>Writes every edited side back to its file or region (a one-time <c>.bak</c> backs the file up first).</summary>
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private Task Save()
+    {
+        var tags = _tags;
+        if (IsBusy || tags is null || _source is not ISaveableDiffSource saver) return Task.CompletedTask;
+        bool saveLeft = LeftModified, saveRight = RightModified;
+
+        IsBusy = true;
+        ErrorMessage = null;
+        int generation = ++_generation;
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        LoadCompletion = done.Task;
+        Task.Run(() =>
+        {
+            var errors = new List<string>();
+            void SaveSide(bool right, NbtTag? root, string side)
+            {
+                if (root is null) { errors.Add($"The {side} side is empty; there is nothing to save"); return; }
+                var result = saver.Save(right, root);
+                if (!result.Ok) errors.Add($"{side}: {result.Failure!.ToDetailedString()}");
+            }
+            if (saveLeft) SaveSide(right: false, tags.Left, "left");
+            if (saveRight) SaveSide(right: true, tags.Right, "right");
+            return errors;
+        }).ContinueWith(t => _ui.Post(() =>
+        {
+            try
+            {
+                if (generation != _generation) return;
+                IsBusy = false;
+                List<string> errors;
+                if (t.Status == TaskStatus.RanToCompletion) errors = t.Result;
+                else errors = [$"Save failed: {t.Exception!.GetBaseException().Message}"];
+                if (errors.Count > 0)
+                {
+                    ErrorMessage = string.Join("\n", errors); // flags stay set, so Save can be retried
+                    return;
+                }
+                if (saveLeft) LeftModified = false;
+                if (saveRight) RightModified = false;
+                SaveStatusText = $"Saved {DateTime.Now:HH:mm:ss}";
+            }
+            finally
+            {
+                done.TrySetResult();
+            }
+        }), TaskScheduler.Default);
+        return done.Task;
     }
 
     [RelayCommand]

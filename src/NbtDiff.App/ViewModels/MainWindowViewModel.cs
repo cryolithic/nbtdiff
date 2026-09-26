@@ -22,6 +22,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string WindowTitle => Current is null ? "nbt-diff" : $"nbt-diff — {Current.Title}";
     public IReadOnlyList<ViewModelBase> Stack => _stack;
 
+    /// <summary>The current view has copies that have not been saved back; ask before Back or window close discards them.</summary>
+    public bool HasDiscardableEdits => Current is FileCompareViewModel { HasUnsavedEdits: true };
+
+    /// <summary>True when there is nothing to lose, or the user chose to discard it.</summary>
+    public async Task<bool> ConfirmDiscardEditsAsync() =>
+        !HasDiscardableEdits || await _dialogs.ConfirmAsync("Unsaved copies",
+            "This view has copies that have not been saved back yet.\n\nDiscard them?");
+
     /// <param name="settings">Null keeps settings in memory only.</param>
     public MainWindowViewModel(IDialogService dialogs, IUiDispatcher ui, IFingerprinter? fingerprinter = null, ISettingsService? settings = null)
     {
@@ -45,11 +53,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             OnPropertyChanged(nameof(WindowTitle));
     }
 
-    /// <summary>Pops the current view. The view below keeps its state (a folder scan is not restarted); the popped view is disposed if it owns resources.</summary>
+    /// <summary>Pops the current view. The view below keeps its state (a folder scan is not restarted); the popped view is disposed if it owns resources. Unsaved copies are confirmed first.</summary>
     [RelayCommand(CanExecute = nameof(CanGoBack))]
-    public void Back()
+    private async Task BackAsync()
     {
         if (_stack.Count <= 1) return;
+        if (!await ConfirmDiscardEditsAsync()) return;
         var popped = _stack[^1];
         popped.PropertyChanged -= OnCurrentTitleChanged;
         _stack.RemoveAt(_stack.Count - 1);
@@ -61,6 +70,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         var vm = new FolderCompareViewModel(_dialogs, _ui, _fingerprinter, Settings);
         vm.NavigationRequested += row => Push(CreateCompareView(row.Kind, row.Left?.FullPath, row.Right?.FullPath, row.Left?.Fingerprint, row.Right?.Fingerprint));
+        // Two file paths typed into the folder view open the pair's compare view directly.
+        vm.FilePairRequested += (left, right) =>
+        {
+            if (OpenPair(left, right) is { } error) vm.ErrorMessage = error;
+        };
         return vm;
     }
 
@@ -125,8 +139,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Push(new PlaceholderViewModel("Usage", "Usage: nbtdiff <left> <right>\n\nBoth arguments must be directories (world folders) or both files.", isError: true));
             return;
         }
+        if (OpenPair(args[0], args[1]) is { } error)
+            Push(new PlaceholderViewModel("Cannot compare", error, isError: true));
+    }
 
-        string left = args[0], right = args[1];
+    /// <summary>
+    /// Routes any two typed paths: two directories start a folder compare; two files (or a file and a
+    /// missing path) open the pair's compare view for its kind. Pushes the view and returns null, or
+    /// returns why the pair cannot be compared without pushing anything. Used by <see cref="Start"/>
+    /// and the folder view's Compare button.
+    /// </summary>
+    public string? OpenPair(string left, string right)
+    {
         bool leftDir = Directory.Exists(left), rightDir = Directory.Exists(right);
         bool leftFile = File.Exists(left), rightFile = File.Exists(right);
 
@@ -137,24 +161,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             vm.RightPath = right;
             Push(vm);
             vm.CompareCommand.Execute(null);
+            return null;
         }
-        else if ((leftFile || rightFile) && !leftDir && !rightDir)
+        if ((leftFile || rightFile) && !leftDir && !rightDir)
         {
             var leftKind = leftFile ? FileClassifier.Classify(left) : (FileKind?)null;
             var rightKind = rightFile ? FileClassifier.Classify(right) : (FileKind?)null;
             if (leftKind is not null && rightKind is not null && leftKind != rightKind)
-            {
-                Push(new PlaceholderViewModel("Cannot compare",
-                    $"The files are of different kinds.\n\n{left} — {leftKind}\n{right} — {rightKind}", isError: true));
-                return;
-            }
+                return $"The files are of different kinds.\n\n{left} — {leftKind}\n{right} — {rightKind}";
             Push(CreateCompareView(leftKind ?? rightKind!.Value, leftFile ? left : null, rightFile ? right : null));
+            return null;
         }
-        else
-        {
-            string Describe(string p) => Directory.Exists(p) ? "directory" : File.Exists(p) ? "file" : "missing";
-            Push(new PlaceholderViewModel("Cannot compare",
-                $"Both arguments must be directories or both files.\n\n{left} — {Describe(left)}\n{right} — {Describe(right)}", isError: true));
-        }
+        string Describe(string p) => Directory.Exists(p) ? "directory" : File.Exists(p) ? "file" : "missing";
+        return $"Both paths must be folders, or both files.\n\n{left} — {Describe(left)}\n{right} — {Describe(right)}";
     }
 }

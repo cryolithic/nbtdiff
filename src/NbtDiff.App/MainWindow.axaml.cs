@@ -33,6 +33,8 @@ public partial class MainWindow : Window
         }
     }
 
+    private bool _closeConfirmed;
+
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         if (Settings is { } settings)
@@ -46,5 +48,21 @@ public partial class MainWindow : Window
             settings.Save();
         }
         base.OnClosing(e);
+        if (_closeConfirmed || e.Cancel) return;
+        if ((DataContext as MainWindowViewModel)?.HasDiscardableEdits == true)
+        {
+            // Cancel this close, ask about unsaved copies, close again if the user discards.
+            e.Cancel = true;
+            _ = ConfirmThenCloseAsync();
+        }
+    }
+
+    private async Task ConfirmThenCloseAsync()
+    {
+        if (DataContext is MainWindowViewModel vm && await vm.ConfirmDiscardEditsAsync())
+        {
+            _closeConfirmed = true;
+            Close();
+        }
     }
 }

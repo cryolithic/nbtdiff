@@ -177,7 +177,7 @@ public class FolderCompareViewModelTests
         vm.CompareCommand.Execute(null);
         Assert.False(vm.IsScanning);
         Assert.True(vm.HasError);
-        Assert.Contains("Left folder does not exist", vm.ErrorMessage);
+        Assert.Contains("Left path does not exist", vm.ErrorMessage);
         Assert.Null(vm.ScanCompletion);
     }
 

@@ -315,4 +315,90 @@ public class RegionFileTests
         using var region = NbtAssert.Ok(RegionFile.Open(path));
         Parallel.ForEach(region.Chunks, chunk => NbtAssert.Ok(chunk.ReadNbt()));
     }
+
+    [Fact]
+    public void WriteChunk_ReplacesContent_ThroughSameInstanceAndAfterReopen()
+    {
+        using var dir = new TempDir();
+        var path = dir.File("r.0.0.mca");
+        var original = WorldBuilder.MakeChunk(1, 0, 0);
+        var other = WorldBuilder.MakeChunk(1, 1, 0);
+        RegionWriter.Write(path, [new ChunkSpec(0, 0, original), new ChunkSpec(1, 0, other)]);
+        using var region = NbtAssert.Ok(RegionFile.Open(path));
+
+        var edited = (NbtCompound)original.Clone();
+        edited.Add(new NbtString("edited", "by nbtdiff"));
+        NbtAssert.Ok(region.WriteChunk(0, 0, edited));
+
+        Assert.Equal(2, region.ChunkCount); // the old bytes stay behind as dead sectors; no slot is lost
+        NbtAssert.Equal(edited, NbtAssert.Ok(region[0, 0]!.ReadNbt()));
+        NbtAssert.Equal(other, NbtAssert.Ok(region[1, 0]!.ReadNbt()));
+
+        region.Dispose();
+        using var reopened = NbtAssert.Ok(RegionFile.Open(path));
+        Assert.Equal(2, reopened.ChunkCount);
+        NbtAssert.Equal(edited, NbtAssert.Ok(reopened[0, 0]!.ReadNbt()));
+        NbtAssert.Equal(other, NbtAssert.Ok(reopened[1, 0]!.ReadNbt()));
+    }
+
+    [Fact]
+    public void WriteChunk_NewSlot_AppendsAChunk()
+    {
+        using var dir = new TempDir();
+        var path = dir.File("r.0.0.mca");
+        RegionWriter.Write(path, [new ChunkSpec(0, 0, WorldBuilder.MakeChunk(1, 0, 0))]);
+        using var region = NbtAssert.Ok(RegionFile.Open(path));
+
+        var added = WorldBuilder.MakeChunk(2, 5, 7);
+        NbtAssert.Ok(region.WriteChunk(5, 7, added));
+
+        Assert.Equal(2, region.ChunkCount);
+        NbtAssert.Equal(added, NbtAssert.Ok(region[5, 7]!.ReadNbt()));
+    }
+
+    [Fact]
+    public void WriteChunk_EmptyRegionFile_GrowsAHeader()
+    {
+        using var dir = new TempDir();
+        var path = dir.File("r.0.0.mca");
+        File.WriteAllBytes(path, []);
+        using var region = NbtAssert.Ok(RegionFile.Open(path));
+        Assert.Equal(0, region.ChunkCount);
+
+        var added = WorldBuilder.MakeChunk(1, 0, 0);
+        NbtAssert.Ok(region.WriteChunk(3, 4, added));
+
+        Assert.Equal(1, region.ChunkCount);
+        NbtAssert.Equal(added, NbtAssert.Ok(region[3, 4]!.ReadNbt()));
+    }
+
+    [Fact]
+    public void WriteChunk_OutOfRange_Fails()
+    {
+        using var dir = new TempDir();
+        var path = dir.File("r.0.0.mca");
+        RegionWriter.Write(path, [new ChunkSpec(0, 0, WorldBuilder.MakeChunk(1, 0, 0))]);
+        using var region = NbtAssert.Ok(RegionFile.Open(path));
+
+        Assert.Contains("(32, 0)", NbtAssert.Failed(region.WriteChunk(32, 0, WorldBuilder.MakeChunk(1, 0, 0))).Description);
+    }
+
+    [Fact]
+    public void WriteChunk_ExternalChunk_RewritesTheMccFile()
+    {
+        using var dir = new TempDir();
+        var path = dir.File("r.0.0.mca");
+        var original = WorldBuilder.MakeChunk(1, 0, 0);
+        RegionWriter.Write(path, [new ChunkSpec(0, 0, original, External: true)]);
+        using var region = NbtAssert.Ok(RegionFile.Open(path));
+        NbtAssert.Ok(region[0, 0]!.ReadNbt()); // the tag view reads before saving; that is what makes the external state known
+
+        var edited = (NbtCompound)original.Clone();
+        edited.Add(new NbtString("edited", "by nbtdiff"));
+        NbtAssert.Ok(region.WriteChunk(0, 0, edited));
+
+        var payload = NbtAssert.Ok(region[0, 0]!.ReadCompressedPayload(null));
+        Assert.True(payload.IsExternal);
+        NbtAssert.Equal(edited, NbtAssert.Ok(region[0, 0]!.ParseNbt(payload)));
+    }
 }

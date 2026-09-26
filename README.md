@@ -34,7 +34,21 @@ files are under the Errors filter (and All).
 | `↑` `↓` | move | move selection | move |
 | `F8` / `F7` | — | — | next / previous change (wraps) |
 | `Ctrl+F8` / `Ctrl+F7` | — | — | next / previous changed chunk of the region (chunk views only) |
+| `Alt+→` / `Alt+←` | — | — | copy the selected row's value or subtree to the other side |
+| `Ctrl+S` | — | — | save edited side(s) back to their files / region (tag view) |
 | `◀ Back` button | | return to the previous view; a folder scan keeps its state and the row you opened is re-selected and scrolled into view | |
+
+The startup folder view also compares two files: type or browse two file paths (the `…` button
+picks a file once the box holds a file path) and press Compare.
+
+In the tag view, `◀ Copy to left` / `Copy to right ▶` copy the selected row — a single value or a
+whole subtree, into an existing or a missing side alike — from one side to the other, WinMerge-style,
+and the diff refreshes immediately. Edits live in memory until `Ctrl+S` writes each edited side back:
+`.dat`/`.snbt` files are rewritten in their original compression (a one-time `.bak` keeps the
+pre-nbtdiff copy), and a chunk is re-appended to its region file the way Minecraft itself saves (dead
+sectors are left behind; the chunk keeps its compression scheme). Going Back, stepping to another
+chunk, or closing the window with unsaved copies asks before discarding them. Bedrock files are
+compared but not written.
 
 Chunks re-saved by Minecraft with only their `LastUpdate` tick changed are not differences: the
 "Ignore tags" box lists tag paths that are not content (default `LastUpdate, Level/LastUpdate`;

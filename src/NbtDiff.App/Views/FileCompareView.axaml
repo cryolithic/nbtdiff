@@ -16,6 +16,9 @@
     <KeyBinding Gesture="F8" Command="{Binding NextChangeCommand}" />
     <KeyBinding Gesture="Ctrl+F8" Command="{Binding NextChunkCommand}" />
     <KeyBinding Gesture="Ctrl+F7" Command="{Binding PreviousChunkCommand}" />
+    <KeyBinding Gesture="Alt+Left" Command="{Binding CopyToLeftCommand}" />
+    <KeyBinding Gesture="Alt+Right" Command="{Binding CopyToRightCommand}" />
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
   </UserControl.KeyBindings>
 
   <UserControl.Styles>
@@ -67,6 +70,16 @@
         <Button Content="Next chunk (Ctrl+F8) ▶" Command="{Binding NextChunkCommand}" IsVisible="{Binding HasChunkNavigation}"
                 ToolTip.Tip="Step to the next changed chunk of this region" />
         <TextBlock Text="{Binding ChunkPositionText}" VerticalAlignment="Center" IsVisible="{Binding HasChunkNavigation}" Opacity="0.7" />
+        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
+        <Button Content="◀ Copy to left" Command="{Binding CopyToLeftCommand}"
+                ToolTip.Tip="Replace the selected row's left value/subtree with the right one (Alt+Left)" />
+        <Button Content="Copy to right ▶" Command="{Binding CopyToRightCommand}"
+                ToolTip.Tip="Replace the selected row's right value/subtree with the left one (Alt+Right)" />
+        <TextBlock Text="● unsaved" VerticalAlignment="Center" Opacity="0.8" IsVisible="{Binding HasUnsavedEdits}"
+                   ToolTip.Tip="Copies not yet written back — press Ctrl+S" />
+        <Button Content="Save" Command="{Binding SaveCommand}"
+                ToolTip.Tip="Write the edited side(s) back to their files / region, keeping a one-time .bak of each file (Ctrl+S)" />
+        <TextBlock Text="{Binding SaveStatusText}" VerticalAlignment="Center" Opacity="0.7" />
         <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
         <Button Content="Expand all" Command="{Binding ExpandAllCommand}" />
         <Button Content="Collapse all" Command="{Binding CollapseAllCommand}" />

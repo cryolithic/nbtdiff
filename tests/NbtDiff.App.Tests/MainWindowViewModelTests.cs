@@ -161,7 +161,7 @@ public class MainWindowViewModelTests
         await region.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Equal(2, region.Grid.Same);
 
-        shell.Back();
+        await shell.BackCommand.ExecuteAsync(null);
         Assert.Same(folder, shell.Current);
         Assert.True(region.IsDisposed);
         Assert.Equal("1 differ · 1 same", folder.StatusText);   // scan state intact
@@ -174,7 +174,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public void Navigation_PushAndBack()
+    public async Task Navigation_PushAndBack()
     {
         var shell = Shell();
         shell.Start([]);
@@ -182,8 +182,72 @@ public class MainWindowViewModelTests
         shell.Push(new PlaceholderViewModel("x", "y"));
         Assert.True(shell.CanGoBack);
         Assert.Equal("nbt-diff — x", shell.WindowTitle);
-        shell.Back();
+        await shell.BackCommand.ExecuteAsync(null);
         Assert.Same(folder, shell.Current);
         Assert.False(shell.CanGoBack);
+    }
+
+    [Fact]
+    public async Task Back_WithUnsavedEdits_ConfirmBeforeDiscarding()
+    {
+        using var d = new TempDir();
+        NbtFixtures.WriteFile(d.File("a.dat"), new NbtCompound("") { new NbtInt("k", 1) }, NbtFormat.JavaNbt);
+        NbtFixtures.WriteFile(d.File("b.dat"), new NbtCompound("") { new NbtInt("k", 2) }, NbtFormat.JavaNbt);
+        var dialogs = new FakeDialogService();
+        var shell = new MainWindowViewModel(dialogs, new ImmediateUiDispatcher());
+        shell.Start([]);
+        var folder = shell.Current;
+        shell.OpenPair(d.File("a.dat"), d.File("b.dat"));
+        var file = Assert.IsType<FileCompareViewModel>(shell.Current);
+        await file.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        file.SelectedItem = file.Tree.Rows.Single(i => i.Path == "k");
+        await file.CopyToRightCommand.ExecuteAsync(null);
+        Assert.True(file.HasUnsavedEdits);
+        Assert.True(shell.HasDiscardableEdits);
+
+        dialogs.NextConfirm = false;
+        await shell.BackCommand.ExecuteAsync(null);
+        Assert.Same(file, shell.Current);   // the discard was refused; nothing popped
+
+        dialogs.NextConfirm = true;
+        await shell.BackCommand.ExecuteAsync(null);
+        Assert.Same(folder, shell.Current);
+    }
+
+    [Fact]
+    public async Task FolderView_TwoFilePaths_OpensFileCompare()
+    {
+        // The startup view is a folder compare, but typing two file paths there must compare the files.
+        using var d = new TempDir();
+        NbtFixtures.WriteFile(d.File("a.dat"), new NbtCompound("") { new NbtInt("k", 1) }, NbtFormat.JavaNbt);
+        NbtFixtures.WriteFile(d.File("b.dat"), new NbtCompound("") { new NbtInt("k", 2) }, NbtFormat.JavaNbt);
+        var shell = Shell();
+        shell.Start([]);
+        var folder = Assert.IsType<FolderCompareViewModel>(shell.Current);
+
+        folder.LeftPath = d.File("a.dat");
+        folder.RightPath = d.File("b.dat");
+        folder.CompareCommand.Execute(null);
+
+        var vm = Assert.IsType<FileCompareViewModel>(shell.Current);
+        await vm.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal(["k"], vm.ChangedNodes.Select(n => n.Path));
+    }
+
+    [Fact]
+    public void OpenPair_MixedFolderAndFile_ReportsError()
+    {
+        using var d = new TempDir();
+        NbtFixtures.WriteFile(d.File("a.dat"), new NbtCompound("") { new NbtInt("k", 1) }, NbtFormat.JavaNbt);
+        var shell = Shell();
+        shell.Start([]);
+        var folder = Assert.IsType<FolderCompareViewModel>(shell.Current);
+
+        folder.LeftPath = d.Path;
+        folder.RightPath = d.File("a.dat");
+        folder.CompareCommand.Execute(null);
+
+        Assert.Contains("two folders, or two files", folder.ErrorMessage);
+        Assert.Same(folder, shell.Current); // nothing was pushed over the folder view
     }
 }

@@ -37,7 +37,10 @@ internal sealed class ImmediateUiDispatcher : IUiDispatcher
 internal sealed class FakeDialogService : IDialogService
 {
     public string? NextFolder { get; set; }
+    public string? NextOpenFile { get; set; }
     public string? NextSaveFile { get; set; }
+    /// <summary>What ConfirmAsync answers; true by default so existing flows are undisturbed.</summary>
+    public bool NextConfirm { get; set; } = true;
     public List<string> Requests { get; } = [];
 
     public Task<string?> PickFolderAsync(string title, string? startPath = null)
@@ -46,9 +49,21 @@ internal sealed class FakeDialogService : IDialogService
         return Task.FromResult(NextFolder);
     }
 
+    public Task<string?> PickOpenFileAsync(string title, string? startPath = null)
+    {
+        Requests.Add($"file:{title}");
+        return Task.FromResult(NextOpenFile);
+    }
+
     public Task<string?> PickSaveFileAsync(string title, string suggestedName, string extension, string typeLabel)
     {
         Requests.Add($"save:{suggestedName}");
         return Task.FromResult(NextSaveFile);
+    }
+
+    public Task<bool> ConfirmAsync(string title, string message)
+    {
+        Requests.Add($"confirm:{title}");
+        return Task.FromResult(NextConfirm);
     }
 }

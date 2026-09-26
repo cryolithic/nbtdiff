@@ -44,10 +44,12 @@
     <!-- Toolbar -->
     <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
       <Grid ColumnDefinitions="*,Auto,12,*,Auto,12,Auto,Auto,Auto" RowDefinitions="Auto">
-        <TextBox Grid.Column="0" Text="{Binding LeftPath}" PlaceholderText="Left folder" />
-        <Button Grid.Column="1" Content="…" Margin="4,0,0,0" Command="{Binding BrowseLeftCommand}" ToolTip.Tip="Browse for the left folder" />
-        <TextBox Grid.Column="3" Text="{Binding RightPath}" PlaceholderText="Right folder" />
-        <Button Grid.Column="4" Content="…" Margin="4,0,0,0" Command="{Binding BrowseRightCommand}" ToolTip.Tip="Browse for the right folder" />
+        <TextBox Grid.Column="0" Text="{Binding LeftPath}" PlaceholderText="Left folder or file" />
+        <Button Grid.Column="1" Content="…" Margin="4,0,0,0" Command="{Binding BrowseLeftCommand}"
+                ToolTip.Tip="Browse for the left folder — or the left file, when the box already holds a file path" />
+        <TextBox Grid.Column="3" Text="{Binding RightPath}" PlaceholderText="Right folder or file" />
+        <Button Grid.Column="4" Content="…" Margin="4,0,0,0" Command="{Binding BrowseRightCommand}"
+                ToolTip.Tip="Browse for the right folder — or the right file, when the box already holds a file path" />
         <Button Grid.Column="6" Content="Compare" Command="{Binding CompareCommand}" Classes="accent" />
         <Button Grid.Column="7" Content="Cancel" Margin="4,0,0,0" Command="{Binding CancelCommand}" />
         <ComboBox Grid.Column="8" Margin="4,0,0,0" MinWidth="110" MaxWidth="360"

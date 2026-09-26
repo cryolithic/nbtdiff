@@ -405,4 +405,80 @@ public class FileCompareViewModelTests
         vm.NextChunkCommand.Execute(null);
         Assert.Equal("x", vm.Title);
     }
+
+    private static async Task<FileCompareViewModel> LoadedFilePair(TempDir d)
+    {
+        var a = new NbtCompound("") { new NbtInt("k", 1) };
+        var b = new NbtCompound("") { new NbtInt("k", 2) };
+        NbtFixtures.WriteFile(d.File("a.dat"), a, NbtFormat.JavaNbt);
+        NbtFixtures.WriteFile(d.File("b.dat"), b, NbtFormat.JavaNbt);
+        var vm = new FileCompareViewModel(new FileDiffSource(d.File("a.dat"), d.File("b.dat")), new ImmediateUiDispatcher());
+        await vm.Load().WaitAsync(TimeSpan.FromSeconds(30));
+        vm.SelectedItem = vm.Tree.Rows.Single(i => i.Path == "k");
+        return vm;
+    }
+
+    [Fact]
+    public async Task CopyToRight_ClearsTheDifference_AndMarksRightModified()
+    {
+        using var d = new TempDir();
+        var vm = await LoadedFilePair(d);
+
+        await vm.CopyToRightCommand.ExecuteAsync(null);
+
+        Assert.True(vm.RightModified);
+        Assert.False(vm.LeftModified);
+        Assert.Equal("No differences", vm.SummaryText);
+        Assert.Empty(vm.ChangedNodes);
+    }
+
+    [Fact]
+    public async Task CopyToRight_IntoMissingSide_SynthesizesTheTree()
+    {
+        using var d = new TempDir();
+        NbtFixtures.WriteFile(d.File("a.dat"), new NbtCompound("") { new NbtInt("k", 1) }, NbtFormat.JavaNbt);
+        var vm = new FileCompareViewModel(new FileDiffSource(d.File("a.dat"), null), new ImmediateUiDispatcher());
+        await vm.Load().WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal(DiffKind.Removed, vm.Root!.Kind);
+
+        vm.SelectedItem = vm.Tree.Rows.Single(i => i.Path == "k");
+        await vm.CopyToRightCommand.ExecuteAsync(null);
+
+        Assert.True(vm.RightModified);
+        Assert.Equal("No differences", vm.SummaryText);
+    }
+
+    [Fact]
+    public async Task Save_WritesTheEditedFile_AndClearsTheFlag()
+    {
+        using var d = new TempDir();
+        var vm = await LoadedFilePair(d);
+
+        await vm.CopyToRightCommand.ExecuteAsync(null);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(vm.HasUnsavedEdits);
+        Assert.False(vm.HasError);
+        Assert.True(File.Exists(d.File("b.dat") + ".bak"));
+
+        var reloaded = NbtDocument.Load(d.File("b.dat")).ValueOrThrow();
+        Assert.Equal(1, reloaded.Root.Get<NbtInt>("k")!.Value);
+    }
+
+    [Fact]
+    public async Task ChunkStepping_BlockedWhileUnsaved()
+    {
+        var (l, r) = Sample();
+        var vm = new FileCompareViewModel(new TagPairSource("x", l, r), new ImmediateUiDispatcher(),
+            navigation: new ChunkNavigation([(0, 0)], (_, _) => new TagPairSource("y", l, r)));
+        await vm.Load().WaitAsync(TimeSpan.FromSeconds(30));
+        vm.SelectedItem = vm.Tree.Rows.Single(i => i.Path == "a/y");
+
+        await vm.CopyToRightCommand.ExecuteAsync(null);
+        vm.NextChunkCommand.Execute(null);
+
+        Assert.True(vm.HasUnsavedEdits);
+        Assert.Contains("Save your copies", vm.ErrorMessage);
+        Assert.Equal("x", vm.Title); // did not step
+    }
 }

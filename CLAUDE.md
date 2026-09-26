@@ -5,8 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Status
 
 Stages S0–S7 of `docs/PLAN.md` are done (2026-09-08); the app scans worlds, diffs regions, chunks,
-NBT files and text, persists settings, and publishes as a single file. Open items are listed under
-S8 in the plan. Tests: 532 (156 Nbt / 283 Core / 93 App).
+NBT files and text, persists settings, and publishes as a single file. WinMerge-style copy
+left/right with Ctrl+S save and two-file compare from the startup folder view were added 2026-09-25
+(review-hardened 2026-09-26: discard confirmation on Back/close, missing-side synthesis, write gate).
+Open items are listed under S8 in the plan. Tests: 627 (182 Nbt / 339 Core / 106 App).
 
 ## Where to look first
 
@@ -210,6 +212,22 @@ Things discovered while building that are not visible from the code. Append here
 - 2026-09-08: real `.snbt` files in worlds are FTB's dialect, not Minecraft's — no commas, `#`
   comments, non-ASCII in unquoted keys, unescaped quotes in translated text. Test parser changes
   against a real corpus: `NBTDIFF_SNBT_CORPUS=K:/git/ATM-10 dotnet test tests/NbtDiff.Nbt.Tests`.
+- 2026-09-25 (merge + save): the tag view gained WinMerge-style Copy to left/right
+  (`NbtMerger`, identity-based — DiffNode.Left/Right are live refs into the parsed trees, and paths
+  are not unique under `KeyedAligner`; missing target containers are synthesized so a copy can land
+  on an empty side, and the post-copy reselection matches the source tag by reference for the same
+  reason) and Ctrl+S persistence. Region saves append whole sectors at EOF and update the
+  location/timestamp tables — Minecraft's own strategy; `RegionFile.Open` had to switch to
+  `FileShare.Read|Write` or the later write handle is denied on Windows, `HandleReader.Length` had
+  to become dynamic or the just-written chunk fails its own EOF check, and writes take an instance
+  gate so append offset + header rewrite stay atomic (two RegionFile instances on one path are not
+  coordinated — the UI never opens one). `NbtDocument.Save` refuses Bedrock formats (untestable
+  headers) and keeps a one-time `.bak`. Back, chunk stepping, and window close with unsaved copies
+  are confirmed via `IDialogService.ConfirmAsync` before discarding. The startup folder view now
+  routes two file paths (or file+missing) through `MainWindowViewModel.OpenPair` — the same routing
+  `Start` uses for CLI args. An emptied list is normalized to `ListType End`, matching how the
+  differ treats empty lists, because an `Unknown`-typed empty list (SNBT-style) cannot be
+  serialized by fNbt.
 - Tooling: the Bash tool rewrites `
 `-style escapes inside long commands; edit C# containing
   char/string escapes with the Edit/Write tools, not python heredocs.
