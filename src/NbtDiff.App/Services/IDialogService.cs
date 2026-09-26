@@ -46,7 +46,11 @@ public sealed class AvaloniaDialogService(Func<TopLevel?> topLevel) : IDialogSer
         {
             Title = title,
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("All files") { Patterns = ["*.*"] }],
+            FileTypeFilter =
+            [
+                new FilePickerFileType("All files") { Patterns = ["*.*"] },
+                new FilePickerFileType("NBT files") { Patterns = ["*.dat", "*.mca", "*.mcr", "*.nbt", "*.snbt"] },
+            ],
         };
         if (startPath is not null)
         {

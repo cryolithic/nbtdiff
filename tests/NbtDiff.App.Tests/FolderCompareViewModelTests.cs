@@ -182,16 +182,33 @@ public class FolderCompareViewModelTests
     }
 
     [Fact]
-    public async Task Browse_SetsPath_WhenNotCancelled()
+    public async Task Browse_FolderAndFilePickers_SetTheirSides()
     {
-        var dialogs = new FakeDialogService { NextFolder = @"C:\worlds\x" };
+        var dialogs = new FakeDialogService { NextFolder = @"C:\worlds\x", NextOpenFile = @"/srv/worlds/level.dat" };
         var vm = new FolderCompareViewModel(dialogs, new ImmediateUiDispatcher());
-        await vm.BrowseLeftCommand.ExecuteAsync(null);
+
+        await vm.BrowseLeftFolderCommand.ExecuteAsync(null);
         Assert.Equal(@"C:\worlds\x", vm.LeftPath);
-        dialogs.NextFolder = null;
-        await vm.BrowseRightCommand.ExecuteAsync(null);
-        Assert.Equal("", vm.RightPath);
-        Assert.Equal(["folder:Left folder", "folder:Right folder"], dialogs.Requests);
+
+        await vm.BrowseRightFileCommand.ExecuteAsync(null);
+        Assert.Equal(@"/srv/worlds/level.dat", vm.RightPath);
+
+        Assert.Equal(["folder:Left folder", "file:Right file"], dialogs.Requests);
+    }
+
+    [Fact]
+    public async Task Browse_Cancelled_LeavesPathsAlone()
+    {
+        var dialogs = new FakeDialogService { NextFolder = null, NextOpenFile = null };
+        var vm = new FolderCompareViewModel(dialogs, new ImmediateUiDispatcher()) { LeftPath = "keep/left", RightPath = "keep/right" };
+
+        await vm.BrowseLeftFolderCommand.ExecuteAsync(null);
+        await vm.BrowseLeftFileCommand.ExecuteAsync(null);
+        await vm.BrowseRightFolderCommand.ExecuteAsync(null);
+        await vm.BrowseRightFileCommand.ExecuteAsync(null);
+
+        Assert.Equal("keep/left", vm.LeftPath);
+        Assert.Equal("keep/right", vm.RightPath);
     }
 
     [Fact]

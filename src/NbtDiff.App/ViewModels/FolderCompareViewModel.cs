@@ -267,28 +267,34 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
         }
     }
 
+    // Four explicit pickers rather than one guessing button: an empty box must still reach the
+    // file picker (two .dat files can be compared straight from this view).
     [RelayCommand]
-    private async Task BrowseLeft()
+    private async Task BrowseLeftFolder()
     {
-        var path = await PickAsync("Left", LeftPath);
+        var path = await _dialogs.PickFolderAsync("Left folder", LeftPath);
         if (path is not null) LeftPath = path;
     }
 
     [RelayCommand]
-    private async Task BrowseRight()
+    private async Task BrowseLeftFile()
     {
-        var path = await PickAsync("Right", RightPath);
+        var path = await _dialogs.PickOpenFileAsync("Left file", LeftPath);
+        if (path is not null) LeftPath = path;
+    }
+
+    [RelayCommand]
+    private async Task BrowseRightFolder()
+    {
+        var path = await _dialogs.PickFolderAsync("Right folder", RightPath);
         if (path is not null) RightPath = path;
     }
 
-    /// <summary>Picks a file when the box holds a file path (so two files can be compared straight
-    /// from here), a folder otherwise — the common case.</summary>
-    private Task<string?> PickAsync(string side, string current)
+    [RelayCommand]
+    private async Task BrowseRightFile()
     {
-        string path = current.Trim();
-        return File.Exists(path)
-            ? _dialogs.PickOpenFileAsync($"{side} file", path)
-            : _dialogs.PickFolderAsync($"{side} folder", path.Length == 0 ? null : path);
+        var path = await _dialogs.PickOpenFileAsync("Right file", RightPath);
+        if (path is not null) RightPath = path;
     }
 
     private bool CanExport => Current is not null && !IsScanning;

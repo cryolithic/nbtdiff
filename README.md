@@ -38,8 +38,8 @@ files are under the Errors filter (and All).
 | `Ctrl+S` | — | — | save edited side(s) back to their files / region (tag view) |
 | `◀ Back` button | | return to the previous view; a folder scan keeps its state and the row you opened is re-selected and scrolled into view | |
 
-The startup folder view also compares two files: type or browse two file paths (the `…` button
-picks a file once the box holds a file path) and press Compare.
+The startup folder view also compares two files: type two file paths, or pick them with the `…`
+button's "File…" entry (next to "Folder…"), and press Compare.
 
 In the tag view, `◀ Copy to left` / `Copy to right ▶` copy the selected row — a single value or a
 whole subtree, into an existing or a missing side alike — from one side to the other, WinMerge-style,
