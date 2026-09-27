@@ -9,3 +9,7 @@ TestResults/
 *.DotSettings.user
 *.swp
 .claude/worktrees/
+
+# coverage output
+coverage*
+*.dcvr

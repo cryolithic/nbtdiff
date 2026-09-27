@@ -75,17 +75,8 @@ namespace fNbt {
         #region Reading / Writing
 
         internal override bool ReadTag(NbtBinaryReader readStream) {
-            if (readStream.Selector != null && !readStream.Selector(this)) {
-                readStream.SkipString();
-                return false;
-            }
             stringVal = readStream.ReadString();
             return true;
-        }
-
-
-        internal override void SkipTag(NbtBinaryReader readStream) {
-            readStream.SkipString();
         }
 
 

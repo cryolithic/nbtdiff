@@ -87,6 +87,7 @@ namespace fNbt {
                 } else if (value == this) {
                     throw new ArgumentException("Cannot add tag to itself");
                 }
+                if (tags.TryGetValue(tagName, out var replaced)) replaced.Parent = null;
                 tags[tagName] = value;
                 value.Parent = this;
             }
@@ -99,8 +100,15 @@ namespace fNbt {
         /// <exception cref="ArgumentNullException"> <paramref name="value"/> is <c>null</c>. </exception>
         [NotNull]
         public override NbtTag this[int tagIndex] {
-            get { return tags[tagIndex]; }
-            set { tags.RemoveAt(tagIndex); this[value.Name] = value; }
+            get { return tags.GetAt(tagIndex).Value; }
+            set {
+                // nbt-diff: replace in place and detach the old tag (upstream appended at the end and
+                // left the removed tag's Parent set).
+                if (value == null) throw new ArgumentNullException("value");
+                if (value.Parent != null) throw new ArgumentException("A tag may only be added to one compound/list at a time.");
+                DoRemoveAt(tagIndex);
+                DoInsert(tagIndex, value);
+            }
         }
 
         /// <summary> Gets the tag with the specified name. May return <c>null</c>. </summary>
@@ -303,7 +311,7 @@ namespace fNbt {
             int index = IndexOf(tagName);
             if (index == -1)
                 return false;
-            var tag = tags[index];
+            var tag = tags.GetAt(index).Value;
             return PerformAction(new DescriptionHolder("Remove {0} from {1}", tag, this),
                 () => DoRemove(tagName),
                 () => { DoInsert(index, tag); }
@@ -325,7 +333,7 @@ namespace fNbt {
         /// <param name="index"> The zero-based index of the item to remove. </param>
         /// <exception cref="ArgumentOutOfRangeException"> <paramref name="index"/> is not a valid index in the NbtCompound. </exception>
         protected override void DoRemoveAt(int index) {
-            var tag = tags[index];
+            var tag = tags.GetAt(index).Value;
             tag.Parent = null;
             tags.RemoveAt(index);
         }
@@ -354,7 +362,7 @@ namespace fNbt {
         /// <returns>The index of the provided tag in this compound, or -1 if it does not contain it</returns>
         public override int IndexOf(NbtTag tag) {
             for (int i = 0; i < tags.Count; i++) {
-                if (tags[i] == tag)
+                if (tags.GetAt(i).Value == tag)
                     return i;
             }
             return -1;
@@ -367,7 +375,7 @@ namespace fNbt {
         /// <returns>The index of a provided tag in this compound with this name, or -1 if it does not contain it</returns>
         public int IndexOf(string name) {
             for (int i = 0; i < tags.Count; i++) {
-                if (tags[i].Name == name)
+                if (tags.GetAt(i).Value.Name == name)
                     return i;
             }
             return -1;
@@ -419,11 +427,6 @@ namespace fNbt {
         }
 
         internal override bool ReadTag(NbtBinaryReader readStream) {
-            if (Parent != null && readStream.Selector != null && !readStream.Selector(this)) {
-                SkipTag(readStream);
-                return false;
-            }
-
             while (true) {
                 NbtTagType nextTag = readStream.ReadTagType();
                 if (nextTag == NbtTagType.End)
@@ -438,71 +441,6 @@ namespace fNbt {
                     tags.Add(newTag.Name, newTag);
                     // ReSharper restore AssignNullToNotNullAttribute
                 }
-            }
-        }
-
-
-        internal override void SkipTag(NbtBinaryReader readStream) {
-            while (true) {
-                NbtTagType nextTag = readStream.ReadTagType();
-                NbtTag newTag;
-                switch (nextTag) {
-                    case NbtTagType.End:
-                        return;
-
-                    case NbtTagType.Byte:
-                        newTag = new NbtByte();
-                        break;
-
-                    case NbtTagType.Short:
-                        newTag = new NbtShort();
-                        break;
-
-                    case NbtTagType.Int:
-                        newTag = new NbtInt();
-                        break;
-
-                    case NbtTagType.Long:
-                        newTag = new NbtLong();
-                        break;
-
-                    case NbtTagType.Float:
-                        newTag = new NbtFloat();
-                        break;
-
-                    case NbtTagType.Double:
-                        newTag = new NbtDouble();
-                        break;
-
-                    case NbtTagType.ByteArray:
-                        newTag = new NbtByteArray();
-                        break;
-
-                    case NbtTagType.String:
-                        newTag = new NbtString();
-                        break;
-
-                    case NbtTagType.List:
-                        newTag = new NbtList();
-                        break;
-
-                    case NbtTagType.Compound:
-                        newTag = new NbtCompound();
-                        break;
-
-                    case NbtTagType.IntArray:
-                        newTag = new NbtIntArray();
-                        break;
-                    
-                    case NbtTagType.LongArray:
-                        newTag = new NbtLongArray();
-                        break;
-
-                    default:
-                        throw new NbtFormatException("Unsupported tag type found in NBT_Compound: " + nextTag);
-                }
-                readStream.SkipString();
-                newTag.SkipTag(readStream);
             }
         }
 

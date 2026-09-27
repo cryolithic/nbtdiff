@@ -8,7 +8,7 @@ Stages S0–S7 of `docs/PLAN.md` are done (2026-09-08); the app scans worlds, di
 NBT files and text, persists settings, and publishes as a single file. WinMerge-style copy
 left/right with Ctrl+S save and two-file compare from the startup folder view were added 2026-09-25
 (review-hardened 2026-09-26: discard confirmation on Back/close, missing-side synthesis, write gate).
-Open items are listed under S8 in the plan. Tests: 627 (182 Nbt / 339 Core / 106 App).
+Open items are listed under S8 in the plan. Tests: 794 (290 Nbt / 339 Core / 165 App).
 
 ## Where to look first
 
@@ -95,7 +95,8 @@ verified by grep — which is what makes this vendoring cheap. Also skip `Models
 - The vendored fNbt is a **fork**, not upstream fNbt — it carries `UndoableAction.cs` and editing
   hooks woven into the tag model. A diff tool needs no undo; strip it, but check what
   `NbtObjects` still calls before deleting.
-- fNbt's `OrderedDictionary.cs` means `NbtCompound` preserves key order. Decide deliberately whether
+- `NbtCompound` preserves key order (it now uses .NET's `OrderedDictionary`; the fork's copy was
+  removed with the other unused fNbt code, DESIGN §3.1). Decide deliberately whether
   reordered-but-equal compounds count as a difference (they probably should not; NBT lists, by
   contrast, are genuinely ordered).
 - **Licensing, verified 2026-09-08:** the fNbt fork carries upstream fNbt's BSD-3-Clause
@@ -228,6 +229,13 @@ Things discovered while building that are not visible from the code. Append here
   `Start` uses for CLI args. An emptied list is normalized to `ListType End`, matching how the
   differ treats empty lists, because an `Unknown`-typed empty list (SNBT-style) cannot be
   serialized by fNbt.
+- 2026-09-26 (coverage): `DataGrid` handles Enter/Left/Right in its own `OnKeyDown` and marks
+  them handled, so a `Grid.KeyDown +=` bubble handler never sees them. The folder and tag views
+  register theirs with `RoutingStrategies.Tunnel` and ignore modified keys (Alt+Left/Right belong
+  to the copy KeyBindings). App tests boot a headless Avalonia session (`Avalonia.Headless`,
+  `HeadlessUi` in `TestSupport.cs`); the converters' static `SolidColorBrush`es are thread-affine,
+  so any test that creates or reads Avalonia objects must do it via `HeadlessUi.Run` / the session
+  dispatcher, or the view tests that render them later fail with a cross-thread error.
 - Tooling: the Bash tool rewrites `
 `-style escapes inside long commands; edit C# containing
   char/string escapes with the Edit/Write tools, not python heredocs.

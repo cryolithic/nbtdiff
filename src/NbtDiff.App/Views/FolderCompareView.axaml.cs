@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using NbtDiff.App.ViewModels;
@@ -13,7 +14,9 @@ public partial class FolderCompareView : UserControl
     {
         InitializeComponent();
         Grid.DoubleTapped += OnGridDoubleTapped;
-        Grid.KeyDown += OnGridKeyDown;
+        // Tunnel: DataGrid handles Enter/Left/Right itself (row and column moves) before a bubbling
+        // handler would see them.
+        Grid.AddHandler(KeyDownEvent, OnGridKeyDown, RoutingStrategies.Tunnel);
         // The view is rebuilt when the user comes Back from a file/region view while the view model
         // (and its SelectedRow) survives; put the row back on screen and give the grid the keyboard so
         // the next row is one arrow key away.
@@ -42,7 +45,8 @@ public partial class FolderCompareView : UserControl
 
     private void OnGridKeyDown(object? sender, KeyEventArgs e)
     {
-        if (Vm is not { } vm) return;
+        // Modified keys belong to the view's KeyBindings (Alt+Left/Right copy).
+        if (Vm is not { } vm || e.KeyModifiers != KeyModifiers.None) return;
         switch (e.Key)
         {
             case Key.Enter:

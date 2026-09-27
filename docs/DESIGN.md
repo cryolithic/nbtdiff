@@ -66,8 +66,15 @@ this project is original code, informed by reading upstream.
   empty vestigial type so the ~20 vendored call sites in the tag setters compile untouched.
 - Every vendored file starts with `#nullable disable` / `#pragma warning disable`; upstream is not
   nullable-annotated and the solution builds with warnings-as-errors.
-- Kept: readers/writers, `NbtCompression` autodetect, `BigEndian`, `OrderedDictionary`,
-  `TagSelector`, all tag types, `JetBrains.Annotations` (Apache-2.0, see NOTICE).
+- Kept: `NbtFile` stream/buffer load and file/buffer save, `NbtBinaryReader`/`Writer`,
+  `NbtCompression` autodetect, `BigEndian`, all tag types, `JetBrains.Annotations` (Apache-2.0,
+  see NOTICE).
+- Removed 2026-09-26 as unused: the streaming `NbtReader`/`NbtWriter`, `TagSelector` and every
+  `SkipTag`, `NbtFile`'s file-name loaders and `ReadRootTagName`, and the fork's
+  `OrderedDictionary`/`KeyedCollection2` — `NbtCompound` now uses .NET's
+  `System.Collections.Generic.OrderedDictionary`. Both `NbtCompound` indexer setters now clear the
+  replaced tag's `Parent` (upstream left it set; the int setter also appended instead of replacing
+  in place).
 - Gotcha: `NbtByte.Value` is an unsigned `byte`; Minecraft and SNBT treat bytes as signed. Convert
   with `(sbyte)` at every boundary that shows or parses a byte (the SNBT code does).
 

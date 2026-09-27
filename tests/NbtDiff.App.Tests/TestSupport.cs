@@ -1,3 +1,5 @@
+using System.Reflection;
+using Avalonia.Headless;
 using NbtDiff.App.Services;
 
 namespace NbtDiff.App.Tests;
@@ -66,4 +68,13 @@ internal sealed class FakeDialogService : IDialogService
         Requests.Add($"confirm:{title}");
         return Task.FromResult(NextConfirm);
     }
+}
+
+/// <summary>The assembly's headless Avalonia session; Avalonia objects must be created and touched on its UI thread.</summary>
+internal static class HeadlessUi
+{
+    public static HeadlessUnitTestSession Session =>
+        HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+
+    public static T Run<T>(Func<T> func) => Session.Dispatch(func, CancellationToken.None).GetAwaiter().GetResult();
 }
