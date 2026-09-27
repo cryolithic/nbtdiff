@@ -1,0 +1,15 @@
+# Vanilla (Fabulously Optimized client, vanilla save format). Files present in both snapshots.
+level.dat
+players/data/{uuid}.dat
+players/advancements/{uuid}.json
+players/stats/{uuid}.json
+data/minecraft/game_rules.dat
+data/minecraft/random_sequences.dat
+data/minecraft/scoreboard.dat
+data/minecraft/weather.dat
+data/minecraft/world_clocks.dat
+dimensions/minecraft/overworld/data/minecraft/raids.dat
+dimensions/minecraft/overworld/data/minecraft/world_border.dat
+dimensions/minecraft/overworld/region/r.0.0.mca
+dimensions/minecraft/overworld/entities/r.0.0.mca
+dimensions/minecraft/overworld/poi/r.0.0.mca

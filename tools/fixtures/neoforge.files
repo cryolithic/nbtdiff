@@ -1,0 +1,21 @@
+# NeoForge (All the Mods 10 Aeronautics). Files present in both snapshots.
+level.dat
+playerdata/{uuid}.dat
+advancements/{uuid}.json
+stats/{uuid}.json
+data/ae2_compass_0_0.dat
+data/ImmersiveEngineering-SaveData.dat
+data/modonomicon_book_states.dat
+data/neoforge_data_attachments.dat
+data/random_sequences.dat
+data/waystones.dat
+DIM-1/data/raids.dat
+dimensions/twilightforest/twilight_forest/data/neoforge_data_attachments.dat
+ftbquests/{uuid}.snbt
+ftbchunks/{uuid}.snbt
+ftbessentials/playerdata/{uuid}.snbt
+ftbteams/player/{uuid}.snbt
+region/r.1.0.mca
+region/r.0.1.mca
+entities/r.0.0.mca
+poi/r.0.0.mca
