@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Region view, proposed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#111317;font-family:Inter,system-ui,sans-serif;color:#e6e6e3}
+a{color:#c9ccd2;text-decoration:none}a:hover{color:#ffffff;text-decoration:underline}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1600px; height: 860px; display: flex; flex-direction: column; background: #111317; color: #e6e6e3; font-family: Inter, system-ui, sans-serif; font-size: 13px; overflow: hidden">
+
+<nav aria-label="Location" style="display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; background: #181b21; border-bottom: 1px solid #2a2f39">
+<a href="Folder.dc.html" aria-label="Back" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+<a href="Folder.dc.html">Modpack World</a>
+<span style="color: #5d636e">/</span>
+<a href="Folder.dc.html">region</a>
+<span style="color: #5d636e">/</span>
+<span style="font-weight: 600; color: #f2f2ef">r.-1.1.mca</span>
+<span style="color: #9aa0aa; font-family: 'JetBrains Mono', monospace; font-size: 12px">chunks x −32…−1, z 32…63</span>
+</nav>
+
+<div style="flex-grow: 1; display: flex; gap: 32px; padding: 14px 28px; min-height: 0">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div role="group" aria-label="Show chunks" style="display: flex; gap: 8px">
+<sc-for list="{{ legend }}" as="l" hint-placeholder-count="5">
+<button aria-pressed="{{ l.pressed }}" style="height: 30px; padding: 0 12px 0 10px; display: inline-flex; align-items: center; gap: 8px; background: #1f232b; border: 1px solid {{ l.border }}; border-radius: 15px; color: {{ l.text }}; font-size: 13px"><span style="width: 12px; height: 12px; border-radius: 3px; background: {{ l.color }}"></span>{{ l.label }}<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9aa0aa">{{ l.count }}</span></button>
+</sc-for>
+</div>
+
+<div style="display: flex; gap: 6px">
+<div style="width: 26px"></div>
+<div style="display: grid; grid-template-columns: repeat(32, 19px); column-gap: 2px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7d838d">
+<sc-for list="{{ axis }}" as="a" hint-placeholder-count="32"><div style="text-align: center">{{ a.label }}</div></sc-for>
+</div>
+</div>
+<div style="display: flex; gap: 6px">
+<div style="display: grid; grid-template-rows: repeat(32, 19px); row-gap: 2px; width: 26px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7d838d; text-align: right">
+<sc-for list="{{ axis }}" as="a" hint-placeholder-count="32"><div style="line-height: 19px">{{ a.label }}</div></sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(32, 19px); grid-auto-rows: 19px; gap: 2px">
+<sc-for list="{{ cells }}" as="c" hint-placeholder-count="1024"><div style="border-radius: 3px; background: {{ c.bg }}; box-shadow: {{ c.ring }}"></div></sc-for>
+</div>
+</div>
+<div style="padding-left: 32px; font-size: 12px; color: #9aa0aa">Local chunk coordinates, 0–31. Arrow keys move · Enter or double-click opens</div>
+</div>
+
+<aside aria-label="Selected chunk" style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; padding: 24px; background: #181b21; border: 1px solid #2a2f39; border-radius: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 12px; color: #9aa0aa">Selected chunk</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 500">(2, 3)</h2>
+<span style="height: 24px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: 12px; background: rgba(239,75,75,0.18); color: #ff9a9a; font-size: 12px; font-weight: 600">Different</span>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: 140px minmax(0, 1fr); row-gap: 10px; font-size: 13px">
+<div style="color: #9aa0aa">World chunk</div>
+<div style="font-family: 'JetBrains Mono', monospace">(−30, 35)</div>
+<div style="color: #9aa0aa">Block range</div>
+<div style="font-family: 'JetBrains Mono', monospace">x −480…−465, z 560…575</div>
+<div style="color: #9aa0aa">Tags changed</div>
+<div style="font-family: 'JetBrains Mono', monospace">1</div>
+</div>
+<div style="height: 1px; background: #2a2f39"></div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 12px; color: #9aa0aa">Changes</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: #111317; border: 1px solid #2a2f39; border-radius: 8px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #c9ccd2; overflow-wrap: anywhere">Entities[0].NeoForgeData.naturesaura:time_alive</div>
+<div style="display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 14px">
+<span style="color: #8fbcf0">7160</span>
+<span style="color: #7d838d">→</span>
+<span style="color: #c7a2f2">7560</span>
+<span style="height: 20px; padding: 0 6px; display: inline-flex; align-items: center; border-radius: 4px; background: #262b35; color: #e6e6e3; font-size: 11px">+400</span>
+</div>
+</div>
+</div>
+<div style="flex-grow: 1"></div>
+<a href="Tag.dc.html" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #e6e6e3; border-radius: 8px; color: #111317; font-size: 14px; font-weight: 600; text-decoration: none">Open chunk<span style="padding: 1px 6px; border: 1px solid #9aa0aa; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; color: #3a404b">Enter</span></a>
+<div style="display: flex; gap: 8px">
+<button style="flex-grow: 1; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>Previous changed</button>
+<button style="flex-grow: 1; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px">Next changed<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+</div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // Transcribed from docs/screenshots/region-grid.png: row -> "col:state" (d different, s same, l left only, r right only)
+    const marks = {
+      0: '4s 16s 24s', 2: '21s 22s 24s', 3: '2d', 4: '1d 2l 3d 4r 5d', 5: '1d 2d 3r 4l', 6: '0d 1d 3d',
+      7: '9l', 8: '27s', 9: '19d', 10: '2d 3d 15s 20r', 11: '17d 18d 26s', 12: '22r', 13: '14d',
+      14: '9l 17d', 15: '2l 15d 16d 22r 24r', 16: '7s 16d 23r 24r', 17: '10d 18d', 18: '10d 27r',
+      19: '16d 21r 26r 27r', 21: '8d 21r', 22: '12d 15d 16r', 23: '0s 8d 20r', 24: '5s 7d 16r 17r 18r',
+      25: '22r 23r 24r', 26: '9r 14r 19r', 27: '1s 3s 7l 13r',
+      28: '0d 2d 7l 9r 11r 12r 13r 17r 20r', 29: '3d 9r 11r 18r', 30: '1s 2s 18r 19r 21r', 31: '9r 17r 18r 20r'
+    };
+    const color = { d: '#ef4b4b', s: '#4f7359', l: '#3d8fe6', r: '#a060e8' };
+    const grid = {};
+    const counts = { d: 0, s: 0, l: 0, r: 0 };
+    Object.keys(marks).forEach((z) => marks[z].split(' ').forEach((m) => {
+      const st = m.slice(-1);
+      grid[z + ',' + parseInt(m, 10)] = st;
+      counts[st]++;
+    }));
+    const cells = [];
+    for (let z = 0; z < 32; z++) {
+      for (let x = 0; x < 32; x++) {
+        const st = grid[z + ',' + x];
+        const sel = x === 2 && z === 3;
+        cells.push({
+          bg: st ? color[st] : '#1a1d23',
+          ring: sel ? '0 0 0 2px #111317, 0 0 0 4px #f2f2ef' : 'none'
+        });
+      }
+    }
+    const axis = [];
+    for (let i = 0; i < 32; i++) axis.push({ label: i % 8 === 0 || i === 31 ? String(i) : '' });
+    const legend = [
+      { label: 'Different', color: color.d, count: counts.d, pressed: 'true', border: '#5a6170', text: '#f2f2ef' },
+      { label: 'Left only', color: color.l, count: counts.l, pressed: 'true', border: '#5a6170', text: '#f2f2ef' },
+      { label: 'Right only', color: color.r, count: counts.r, pressed: 'true', border: '#5a6170', text: '#f2f2ef' },
+      { label: 'Same', color: color.s, count: counts.s, pressed: 'true', border: '#5a6170', text: '#f2f2ef' },
+      { label: 'Error', color: '#e0a020', count: 0, pressed: 'false', border: '#2f3540', text: '#9aa0aa' }
+    ];
+    return { cells, axis, legend };
+  }
+}
+</script>
+</body>
+</html>

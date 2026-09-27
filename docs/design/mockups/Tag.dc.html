@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tag diff, proposed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#111317;font-family:Inter,system-ui,sans-serif;color:#e6e6e3}
+a{color:#c9ccd2;text-decoration:none}a:hover{color:#ffffff;text-decoration:underline}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1600px; height: 860px; display: flex; flex-direction: column; background: #111317; color: #e6e6e3; font-family: Inter, system-ui, sans-serif; font-size: 13px; overflow: hidden">
+
+<nav aria-label="Location" style="display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; background: #181b21; border-bottom: 1px solid #2a2f39">
+<a href="Region.dc.html" aria-label="Back" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+<a href="Folder.dc.html">Modpack World</a>
+<span style="color: #5d636e">/</span>
+<a href="Folder.dc.html">region</a>
+<span style="color: #5d636e">/</span>
+<a href="Region.dc.html">r.-1.1.mca</a>
+<span style="color: #5d636e">/</span>
+<span style="font-weight: 600; color: #f2f2ef">chunk (2, 3)</span>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; align-items: center; gap: 2px; padding: 3px; background: #111317; border: 1px solid #2a2f39; border-radius: 8px">
+<button aria-label="Previous changed chunk (Ctrl+F7)" title="Ctrl+F7" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #c9ccd2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+<span style="padding: 0 8px; font-size: 13px; color: #c9ccd2">Changed chunk <b style="color: #f2f2ef; font-weight: 600">1</b> of 79</span>
+<button aria-label="Next changed chunk (Ctrl+F8)" title="Ctrl+F8" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #c9ccd2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+</div>
+</nav>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 12px; border-bottom: 1px solid #2a2f39">
+<div style="display: flex; gap: 6px">
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>Previous change<span style="padding: 0 4px; border: 1px solid #3a404b; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9aa0aa">F7</span></button>
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7"></path></svg>Next change<span style="padding: 0 4px; border: 1px solid #3a404b; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9aa0aa">F8</span></button>
+</div>
+<div style="width: 1px; height: 22px; background: #2a2f39"></div>
+<div style="display: flex; gap: 6px">
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px"><span style="color: #8fbcf0">◀</span>Copy to left</button>
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px">Copy to right<span style="color: #c7a2f2">▶</span></button>
+<button disabled style="height: 32px; padding: 0 12px; background: #1a1d23; border: 1px solid #262b34; border-radius: 6px; color: #6b717c; font-size: 13px">Save</button>
+</div>
+<div style="flex-grow: 1"></div>
+<label style="display: inline-flex; align-items: center; gap: 6px; color: #c9ccd2"><input type="checkbox" style="margin: 0; accent-color: #e6e6e3">Show unchanged</label>
+<label style="display: inline-flex; align-items: center; gap: 6px; color: #c9ccd2"><input type="checkbox" style="margin: 0; accent-color: #e6e6e3">Key order matters</label>
+<label style="display: inline-flex; align-items: center; gap: 6px; color: #c9ccd2"><input type="checkbox" checked style="margin: 0; accent-color: #e6e6e3">Match lists by UUID / id</label>
+<div style="width: 1px; height: 22px; background: #2a2f39"></div>
+<button aria-label="Expand all" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #c9ccd2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg></button>
+<button aria-label="Collapse all" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #c9ccd2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20l5-5 5 5M7 4l5 5 5-5"></path></svg></button>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 140px minmax(0, 1fr) 48px minmax(0, 1fr); height: 30px; align-items: center; background: #14161b; border-bottom: 1px solid #2a2f39; font-size: 12px; color: #9aa0aa">
+<div style="padding-left: 12px">Name</div>
+<div>Type</div>
+<div>Left</div>
+<div></div>
+<div>Right</div>
+</div>
+
+<div style="flex-grow: 1; overflow: hidden">
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
+<div style="display: grid; grid-template-columns: minmax(0, 1.3fr) 140px minmax(0, 1fr) 48px minmax(0, 1fr); height: 26px; background: {{ r.rowBg }}; box-shadow: {{ r.ring }}; border-bottom: 1px solid #181b21">
+<div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; padding-left: {{ r.pad }}px">
+<span style="width: 12px; flex-shrink: 0; font-size: 10px; color: #7d838d">{{ r.chev }}</span>
+<span style="white-space: nowrap; font-weight: {{ r.weight }}">{{ r.name }}</span>
+<span style="white-space: nowrap; font-size: 11px; color: #9aa0aa">{{ r.rollup }}</span>
+</div>
+<div style="display: flex; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9aa0aa; white-space: nowrap">{{ r.type }}</div>
+<div style="display: flex; align-items: center; gap: 8px; padding-left: 4px; background: {{ r.lBg }}; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{ r.lColor }}">{{ r.left }}</div>
+<div style="display: flex; align-items: center; justify-content: center">
+<span style="min-width: 22px; height: 18px; box-sizing: border-box; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; background: {{ r.chipBg }}; color: {{ r.chipColor }}; font-size: {{ r.chipSize }}px; font-weight: 600">{{ r.chip }}</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding-left: 4px; background: {{ r.rBg }}; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{ r.rColor }}">{{ r.right }}<sc-if value="{{ r.hasDelta }}" hint-placeholder-val="{{ false }}"><span style="height: 18px; padding: 0 6px; display: inline-flex; align-items: center; border-radius: 4px; background: #2a2f39; color: #e6e6e3; font-size: 11px">{{ r.delta }}</span></sc-if></div>
+</div>
+</sc-for>
+</div>
+
+<section aria-label="Selected tag" style="display: flex; flex-direction: column; gap: 14px; padding: 16px 20px 18px; background: #181b21; border-top: 1px solid #2a2f39">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="font-size: 12px; color: #9aa0aa">Path</span>
+<code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #f2f2ef">Entities[0].NeoForgeData."naturesaura:time_alive"</code>
+<button style="height: 26px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #c9ccd2; font-size: 12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>Copy path</button>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 12px; color: #9aa0aa">int · changed</span>
+</div>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); gap: 16px; align-items: stretch">
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #111317; border: 1px solid #2a2f39; border-radius: 8px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; color: #8fbcf0">Left</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 24px">7160</span>
+</div>
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px">Copy to right<span style="color: #c7a2f2">▶</span></button>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 16px; color: #f2f2ef">+400</span>
+<span style="font-size: 12px; color: #9aa0aa">+5.6%</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #111317; border: 1px solid #2a2f39; border-radius: 8px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12px; color: #c7a2f2">Right</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 24px">7560</span>
+</div>
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px"><span style="color: #8fbcf0">◀</span>Copy to left</button>
+</div>
+</div>
+</section>
+
+<div style="display: flex; align-items: center; gap: 16px; height: 32px; padding: 0 12px; background: #181b21; border-top: 1px solid #2a2f39; font-size: 12px; color: #c9ccd2">
+<span><b style="font-weight: 600; color: #f2f2ef">4</b> differences in this chunk: 1 changed · 2 added on right · 1 count change</span>
+<div style="flex-grow: 1"></div>
+<span style="color: #9aa0aa">Key order ignored · lists matched by UUID / id</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // [depth, open ('▾' | '▸' | ''), name, type, left, right, state (roll|ne|ro|lo), rollup, delta, selected]
+    const data = [
+      [0, '▾', '(root)', 'compound', '{3 entries}', '{3 entries}', 'roll', '4 changes', '', false],
+      [1, '▾', 'Entities', 'list<compound>', '[1 item]', '[1 item]', 'roll', '1 change', '', false],
+      [2, '▾', '[0]: "minecraft:cow"', 'compound', '{32 entries}', '{32 entries}', 'roll', '1 change', '', false],
+      [3, '▾', 'NeoForgeData', 'compound', '{1 entry}', '{1 entry}', 'roll', '1 change', '', false],
+      [4, '', 'naturesaura:time_alive', 'int', '7160', '7560', 'ne', '', '+400', true],
+      [1, '▾', 'block_entities', 'list<compound>', '[6 items]', '[8 items]', 'roll', '2 added', '+2', false],
+      [2, '▸', '[6]: "ae2:cable_bus" (−467, 64, 571)', 'compound', '', '{9 entries}', 'ro', '', '', false],
+      [2, '▸', '[7]: "ae2:drive" (−466, 64, 571)', 'compound', '', '{11 entries}', 'ro', '', '', false]
+    ];
+    const hatch = 'repeating-linear-gradient(135deg, #191c22 0px, #191c22 5px, #121418 5px, #121418 10px)';
+    const rows = data.map(([depth, chev, name, type, left, right, st, rollup, delta, selected]) => {
+      const chip = st === 'ne' ? { chip: '≠', chipBg: '#ef4b4b', chipColor: '#1b0708', chipSize: 13 }
+        : st === 'ro' ? { chip: '▶', chipBg: '#a060e8', chipColor: '#12081f', chipSize: 10 }
+        : { chip: '●', chipBg: 'transparent', chipColor: '#ef4b4b', chipSize: 10 };
+      return Object.assign({
+        pad: 10 + depth * 18, chev, name, type, rollup,
+        weight: st === 'roll' ? 500 : 400,
+        left: st === 'ro' ? '' : left,
+        right: st === 'lo' ? '' : right,
+        lColor: st === 'ne' ? '#8fbcf0' : '#b8bcc4',
+        rColor: st === 'ne' ? '#c7a2f2' : '#b8bcc4',
+        rowBg: st === 'ne' ? 'rgba(239,75,75,0.14)' : 'transparent',
+        lBg: st === 'ro' ? hatch : 'transparent',
+        rBg: st === 'ro' ? 'rgba(160,96,232,0.16)' : 'transparent',
+        ring: selected ? 'inset 0 0 0 1px #f2f2ef' : 'none',
+        delta, hasDelta: delta !== ''
+      }, chip);
+    });
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>

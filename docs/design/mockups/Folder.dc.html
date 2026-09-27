@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Folder compare, proposed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#111317;font-family:Inter,system-ui,sans-serif;color:#e6e6e3}
+a{color:#8fbcf0}a:hover{color:#b7d4f6}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1600px; height: 900px; display: flex; flex-direction: column; background: #111317; color: #e6e6e3; font-family: Inter, system-ui, sans-serif; font-size: 13px; overflow: hidden">
+
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #181b21; border-bottom: 1px solid #2a2f39">
+<input aria-label="Left folder" value="~/.minecraft/saves/Modpack World" style="flex-grow: 1; height: 34px; box-sizing: border-box; padding: 0 10px; background: #111317; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<button aria-label="Swap sides" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #c9ccd2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M16 3l4 4-4 4M20 17H4M8 13l-4 4 4 4"></path></svg></button>
+<input aria-label="Right folder" value="~/backups/Modpack World 2026-09-03" style="flex-grow: 1; height: 34px; box-sizing: border-box; padding: 0 10px; background: #111317; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<button style="height: 34px; padding: 0 14px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px">Cancel</button>
+<button style="height: 34px; padding: 0 16px; background: #e6e6e3; border: 1px solid #e6e6e3; border-radius: 6px; color: #111317; font-size: 13px; font-weight: 600">Compare</button>
+<button style="height: 34px; padding: 0 10px 0 12px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px">Recent<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #2a2f39">
+<div role="group" aria-label="Show" style="display: flex; gap: 2px; padding: 3px; background: #181b21; border: 1px solid #2a2f39; border-radius: 8px">
+<button aria-pressed="true" style="height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; background: #2c323d; border: 0; border-radius: 6px; color: #f2f2ef; font-size: 13px; font-weight: 500">All<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #b8bcc4">3 539</span></button>
+<button aria-pressed="false" style="height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 0; border-radius: 6px; color: #c9ccd2; font-size: 13px"><span style="width: 8px; height: 8px; border-radius: 2px; background: #ef4b4b"></span>Differences<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9aa0aa">318</span></button>
+<button aria-pressed="false" style="height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 0; border-radius: 6px; color: #c9ccd2; font-size: 13px"><span style="width: 8px; height: 8px; border-radius: 2px; background: #3d8fe6"></span>Left only<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9aa0aa">75</span></button>
+<button aria-pressed="false" style="height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 0; border-radius: 6px; color: #c9ccd2; font-size: 13px"><span style="width: 8px; height: 8px; border-radius: 2px; background: #a060e8"></span>Right only<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9aa0aa">168</span></button>
+<button aria-pressed="false" style="height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 0; border-radius: 6px; color: #c9ccd2; font-size: 13px"><span style="width: 8px; height: 8px; border-radius: 2px; background: #e0a020"></span>Errors<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9aa0aa">0</span></button>
+</div>
+<div style="flex-grow: 1"></div>
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 8px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"></path><circle cx="15" cy="6" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>Compare options<span style="color: #9aa0aa">Deep verify · keyed lists · 2 ignored tags</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+<div style="width: 1px; height: 22px; background: #2a2f39"></div>
+<button aria-label="Expand all" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #c9ccd2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg></button>
+<button aria-label="Collapse all" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #c9ccd2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20l5-5 5 5M7 4l5 5 5-5"></path></svg></button>
+<button style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; background: #1f232b; border: 1px solid #2f3540; border-radius: 6px; color: #e6e6e3; font-size: 13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Export<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 84px 140px 48px minmax(0, 1fr) 84px 140px; height: 30px; align-items: center; background: #14161b; border-bottom: 1px solid #2a2f39; font-size: 12px; color: #9aa0aa">
+<div style="padding-left: 12px">Left</div>
+<div style="text-align: right; padding-right: 12px">Size</div>
+<div style="padding-left: 4px">Modified</div>
+<div></div>
+<div style="padding-left: 12px">Right</div>
+<div style="text-align: right; padding-right: 12px">Size</div>
+<div style="padding-left: 4px">Modified</div>
+</div>
+
+<div style="flex-grow: 1; overflow: hidden">
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="28">
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 84px 140px 48px minmax(0, 1fr) 84px 140px; height: 26px; background: {{ r.rowBg }}; border-bottom: 1px solid #181b21">
+<div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; padding-left: {{ r.pad }}px; background: {{ r.lBg }}">
+<span style="width: 12px; flex-shrink: 0; font-size: 10px; color: #7d838d">{{ r.chev }}</span>
+<span style="white-space: nowrap; font-weight: {{ r.weight }}; color: {{ r.lNameColor }}">{{ r.lName }}</span>
+<span style="white-space: nowrap; font-size: 11px; color: #9aa0aa">{{ r.rollup }}</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; background: {{ r.lBg }}; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #b8bcc4">{{ r.lSize }}</div>
+<div style="display: flex; align-items: center; padding-left: 4px; background: {{ r.lBg }}; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{ r.lModColor }}">{{ r.lMod }}</div>
+<div style="display: flex; align-items: center; justify-content: center">
+<span style="min-width: 22px; height: 18px; box-sizing: border-box; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; background: {{ r.chipBg }}; border: 1px {{ r.chipLine }} {{ r.chipBorder }}; color: {{ r.chipColor }}; font-size: {{ r.chipSize }}px; font-weight: 600">{{ r.chip }}</span>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; padding-left: {{ r.pad }}px; background: {{ r.rBg }}">
+<span style="width: 12px; flex-shrink: 0; font-size: 10px; color: #7d838d">{{ r.rChev }}</span>
+<span style="white-space: nowrap; font-weight: {{ r.weight }}; color: {{ r.rNameColor }}">{{ r.rName }}</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; background: {{ r.rBg }}; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #b8bcc4">{{ r.rSize }}</div>
+<div style="display: flex; align-items: center; padding-left: 4px; background: {{ r.rBg }}; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{ r.rModColor }}">{{ r.rMod }}</div>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; align-items: center; gap: 16px; height: 36px; padding: 0 12px; background: #181b21; border-top: 1px solid #2a2f39; font-size: 12px; color: #c9ccd2">
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 16px; height: 14px; box-sizing: border-box; border: 1px dashed #ef4b4b; border-radius: 3px"></span><b style="font-weight: 600; color: #f2f2ef">318</b> probably differ</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 16px; height: 14px; border-radius: 3px; background: #3d8fe6"></span><b style="font-weight: 600; color: #f2f2ef">75</b> left only</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 16px; height: 14px; border-radius: 3px; background: #a060e8"></span><b style="font-weight: 600; color: #f2f2ef">168</b> right only</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><b style="font-weight: 600; color: #f2f2ef">2 321</b> same</span>
+<span style="display: inline-flex; align-items: center; gap: 6px"><b style="font-weight: 600; color: #f2f2ef">657</b> pending</span>
+<div style="flex-grow: 1"></div>
+<span style="color: #9aa0aa">Pass 1 of 2 · hashing bytes in region/</span>
+<div style="width: 220px; height: 6px; border-radius: 3px; background: #2a2f39; overflow: hidden"><div style="width: 73%; height: 6px; background: #e6e6e3"></div></div>
+<span style="font-family: 'JetBrains Mono', monospace; color: #f2f2ef">73%</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // [depth, kind (open|shut|empty|file), name, state (ne|pd|eq|lo|ro|pend), lSize, lMod, rSize, rMod, rollup]
+    const data = [
+      [0, 'open', 'DIM-1', 'ne', '', '', '', '', '2 probably differ · 2 left only'],
+      [1, 'shut', 'data', 'ne', '', '', '', '', '2 probably differ · 2 left only'],
+      [1, 'shut', 'entities', 'eq', '', '', '', '', ''],
+      [1, 'shut', 'poi', 'eq', '', '', '', '', ''],
+      [1, 'shut', 'region', 'eq', '', '', '', '', ''],
+      [1, 'shut', 'sublevels', 'eq', '', '', '', '', ''],
+      [0, 'open', 'DIM1', 'ne', '', '', '', '', '1 differs'],
+      [1, 'shut', 'data', 'ne', '', '', '', '', '1 differs'],
+      [1, 'empty', 'sublevels', 'eq', '', '', '', '', ''],
+      [0, 'empty', 'EnderStorage', 'eq', '', '', '', '', ''],
+      [0, 'open', 'advancements', 'pd', '', '', '', '', '1 probably differs'],
+      [1, 'file', '<player-uuid>.json', 'pd', '47 KB', '2026-09-03 02:05', '48 KB', '2026-09-03 03:07', ''],
+      [0, 'open', 'compactmachines', 'eq', '', '', '', '', ''],
+      [1, 'shut', 'player_spawns', 'eq', '', '', '', '', ''],
+      [1, 'file', 'room_registrations.dat', 'eq', '57 B', '2026-09-03 02:05', '57 B', '2026-09-03 03:07', ''],
+      [0, 'open', 'data', 'ne', '', '', '', '', '9 differ · 2 left only · 1 pending'],
+      [1, 'shut', 'epitaphs', 'ne', '', '', '', '', '1 differs'],
+      [1, 'shut', 'journeymap', 'pd', '', '', '', '', '1 probably differs'],
+      [1, 'shut', 'lootr', 'ne', '', '', '', '', '3 differ'],
+      [1, 'file', 'DistantHorizons.sqlite', 'pend', '3.6 GB', '2026-09-03 01:52', '3.6 GB', '2026-09-03 03:07', ''],
+      [1, 'file', 'DistantHorizons.sqlite-shm', 'lo', '32 KB', '2026-09-03 02:04', '', '', ''],
+      [1, 'file', 'DistantHorizons.sqlite-wal', 'lo', '4.7 MB', '2026-09-03 02:04', '', '', ''],
+      [1, 'file', 'ImmersiveEngineering-SaveData.dat', 'pd', '1.6 MB', '2026-09-03 01:52', '1.6 MB', '2026-09-03 02:58', ''],
+      [1, 'file', 'InControlData.dat', 'pd', '91 B', '2026-09-03 01:38', '92 B', '2026-09-03 03:03', ''],
+      [1, 'file', 'JMPlayerSettings.dat', 'eq', '222 B', '2026-09-03 02:05', '222 B', '2026-09-03 02:21', ''],
+      [1, 'file', 'TitaniumReward.dat', 'eq', '133 B', '2026-08-21 01:24', '133 B', '2026-09-03 01:33', ''],
+      [1, 'file', 'WorldUUID.dat', 'eq', '111 B', '2026-09-03 02:05', '111 B', '2026-09-03 02:21', ''],
+      [1, 'file', 'actuallyadditions_worldsave.dat', 'eq', '154 B', '2026-08-21 01:24', '154 B', '2026-09-03 01:33', '']
+    ];
+    const hatch = 'repeating-linear-gradient(135deg, #191c22 0px, #191c22 5px, #121418 5px, #121418 10px)';
+    const chips = {
+      ne: { chip: '≠', chipBg: '#ef4b4b', chipBorder: '#ef4b4b', chipLine: 'solid', chipColor: '#1b0708', chipSize: 13 },
+      pd: { chip: '≠?', chipBg: 'transparent', chipBorder: '#ef4b4b', chipLine: 'dashed', chipColor: '#ff8f8f', chipSize: 11 },
+      eq: { chip: '=', chipBg: 'transparent', chipBorder: 'transparent', chipLine: 'solid', chipColor: '#3e444f', chipSize: 12 },
+      lo: { chip: '◀', chipBg: '#3d8fe6', chipBorder: '#3d8fe6', chipLine: 'solid', chipColor: '#08121f', chipSize: 10 },
+      ro: { chip: '▶', chipBg: '#a060e8', chipBorder: '#a060e8', chipLine: 'solid', chipColor: '#12081f', chipSize: 10 },
+      pend: { chip: '…', chipBg: 'transparent', chipBorder: '#3a404b', chipLine: 'solid', chipColor: '#9aa0aa', chipSize: 12 }
+    };
+    const rows = data.map(([depth, kind, name, st, lSize, lMod, rSize, rMod, rollup]) => {
+      const folder = kind !== 'file';
+      let chip = chips[st];
+      if (folder && kind !== 'shut' && st !== 'eq') {
+        chip = { chip: '●', chipBg: 'transparent', chipBorder: 'transparent', chipLine: 'solid', chipColor: st === 'pd' ? '#b85a5a' : '#ef4b4b', chipSize: 10 };
+      }
+      // Leaves always tinted; folders only while collapsed (expanded ones hand the colour to their children).
+      const leafDiff = (!folder || kind === 'shut') && (st === 'ne' || st === 'pd');
+      const chev = kind === 'open' ? '▾' : kind === 'shut' ? '▸' : '';
+      const newerLeft = lMod > rMod, newerRight = rMod > lMod;
+      return Object.assign({
+        pad: 10 + depth * 16,
+        chev, rChev: st === 'lo' ? '' : chev,
+        lName: st === 'ro' ? '' : name,
+        rName: st === 'lo' ? '' : name,
+        weight: folder ? 500 : 400,
+        lNameColor: '#e6e6e3', rNameColor: '#e6e6e3',
+        rollup,
+        lSize, lMod, rSize, rMod,
+        lModColor: newerLeft ? '#e6e6e3' : '#7d838d',
+        rModColor: newerRight ? '#e6e6e3' : '#7d838d',
+        rowBg: leafDiff ? (st === 'ne' ? 'rgba(239,75,75,0.14)' : 'rgba(239,75,75,0.08)') : 'transparent',
+        lBg: st === 'lo' ? 'rgba(61,143,230,0.16)' : st === 'ro' ? hatch : 'transparent',
+        rBg: st === 'ro' ? 'rgba(160,96,232,0.16)' : st === 'lo' ? hatch : 'transparent'
+      }, chip);
+    });
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>
