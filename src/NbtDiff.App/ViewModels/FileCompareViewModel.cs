@@ -69,12 +69,15 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     public bool IsSaveable => _source is ISaveableDiffSource;
 
     private readonly ISettingsService _settings;
+    private readonly SaveGate? _saveGate;
 
     /// <param name="settings">Seeds and persists the compare toggles; null keeps them in memory.</param>
     /// <param name="navigation">Sibling chunks reachable with Next/Previous chunk; null for standalone files.</param>
-    public FileCompareViewModel(IDiffSource source, IUiDispatcher ui, ISettingsService? settings = null, ChunkNavigation? navigation = null)
+    /// <param name="saveGate">Checked before every save (open world, backup prompt); null skips the checks (tests).</param>
+    public FileCompareViewModel(IDiffSource source, IUiDispatcher ui, ISettingsService? settings = null, ChunkNavigation? navigation = null, SaveGate? saveGate = null)
     {
         _source = source;
+        _saveGate = saveGate;
         _ui = ui;
         _settings = settings ?? new SettingsService(null);
         _navigation = navigation;
@@ -347,18 +350,31 @@ public sealed partial class FileCompareViewModel : ViewModelBase
 
     /// <summary>Writes every edited side back to its file or region (a one-time <c>.bak</c> backs the file up first).</summary>
     [RelayCommand(CanExecute = nameof(CanSave))]
-    private Task Save()
+    private async Task Save()
     {
         var tags = _tags;
-        if (IsBusy || tags is null || _source is not ISaveableDiffSource saver) return Task.CompletedTask;
+        if (IsBusy || tags is null || _source is not ISaveableDiffSource saver) return;
         bool saveLeft = LeftModified, saveRight = RightModified;
+
+        if (_saveGate is not null)
+        {
+            var targets = new List<string>();
+            if (saveLeft && saver.SavePath(right: false) is { } leftPath) targets.Add(leftPath);
+            if (saveRight && saver.SavePath(right: true) is { } rightPath) targets.Add(rightPath);
+            var check = await _saveGate.CheckAsync(targets);
+            if (!check.Proceed)
+            {
+                ErrorMessage = check.Error; // null when the user cancelled the backup prompt
+                return;
+            }
+        }
 
         IsBusy = true;
         ErrorMessage = null;
         int generation = ++_generation;
         var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         LoadCompletion = done.Task;
-        Task.Run(() =>
+        _ = Task.Run(() =>
         {
             var errors = new List<string>();
             void SaveSide(bool right, NbtTag? root, string side)
@@ -393,7 +409,7 @@ public sealed partial class FileCompareViewModel : ViewModelBase
                 done.TrySetResult();
             }
         }), TaskScheduler.Default);
-        return done.Task;
+        await done.Task;
     }
 
     [RelayCommand]

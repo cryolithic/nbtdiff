@@ -8,7 +8,7 @@ Stages S0–S7 of `docs/PLAN.md` are done (2026-09-08); the app scans worlds, di
 NBT files and text, persists settings, and publishes as a single file. WinMerge-style copy
 left/right with Ctrl+S save and two-file compare from the startup folder view were added 2026-09-25
 (review-hardened 2026-09-26: discard confirmation on Back/close, missing-side synthesis, write gate).
-Open items are listed under S8 in the plan. Tests: 794 (290 Nbt / 339 Core / 165 App).
+Open items are listed under S8 in the plan. Tests: 808 (290 Nbt / 345 Core / 173 App).
 
 ## Where to look first
 
@@ -243,6 +243,11 @@ Things discovered while building that are not visible from the code. Append here
   copies it, `LICENSE` and the two verbatim notice files next to every published executable. If a
   package is added, update NOTICE. Version is 0.8.0 in `Directory.Build.props`; CI overrides it
   from the `v*` tag and releases `v0.*` as pre-release, standalone and `-needs-dotnet10` builds.
+- 2026-09-27 (#2): saves go through `SaveGate` (one per app session, owned by
+  `MainWindowViewModel`): `WorldLock.FindOpenWorld` refuses targets in a world whose
+  `session.lock` is held, then a once-per-session backup confirm. The lock probe is
+  `FileStream.Lock`, which is `fcntl` on Linux — POSIX locks never conflict inside one process, so
+  tests hold the lock from a `python3` child (`WorldLockTests.HoldLock`).
 - Tooling: the Bash tool rewrites `
 `-style escapes inside long commands; edit C# containing
   char/string escapes with the Edit/Write tools, not python heredocs.

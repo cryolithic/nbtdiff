@@ -21,7 +21,7 @@ public interface IDialogService
     Task<string?> PickSaveFileAsync(string title, string suggestedName, string extension, string typeLabel);
 
     /// <summary>Modal question; true means proceed. False when no window is up to ask in.</summary>
-    Task<bool> ConfirmAsync(string title, string message);
+    Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Discard");
 }
 
 /// <summary>Uses the window's <see cref="IStorageProvider"/>. Resolve the window lazily: it does not exist when the view models are built.</summary>
@@ -76,7 +76,7 @@ public sealed class AvaloniaDialogService(Func<TopLevel?> topLevel) : IDialogSer
         return file?.TryGetLocalPath();
     }
 
-    public async Task<bool> ConfirmAsync(string title, string message)
+    public async Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Discard")
     {
         if (topLevel() is not Window owner) return false;
         bool proceed = false;
@@ -111,7 +111,7 @@ public sealed class AvaloniaDialogService(Func<TopLevel?> topLevel) : IDialogSer
                     Orientation = Orientation.Horizontal,
                     HorizontalAlignment = HorizontalAlignment.Right,
                     Spacing = 8,
-                    Children = { Button("Cancel", false), Button("Discard", true) },
+                    Children = { Button("Cancel", false), Button(confirmLabel, true) },
                 },
             },
         };

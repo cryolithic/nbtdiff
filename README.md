@@ -126,7 +126,8 @@ discarding them.
 
 **Before you save anything, back up the world, and close it in Minecraft** (or stop the server).
 Minecraft keeps its own copy of loaded chunks in memory and will overwrite your change, or worse,
-when it next saves.
+when it next saves. nbt-diff refuses to save into a world whose `session.lock` is held by
+Minecraft or a server, and the first save of each session asks you to confirm you have a backup.
 
 ## Settings
 

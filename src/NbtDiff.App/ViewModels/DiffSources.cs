@@ -23,6 +23,9 @@ public interface ISaveableDiffSource
     /// <param name="right">Which side: false writes the left file/chunk, true the right one.</param>
     /// <param name="root">The edited root tag of that side; never null.</param>
     LoadResult<object> Save(bool right, NbtTag root);
+
+    /// <summary>The file <see cref="Save"/> would write for that side, or null when the side has nowhere to save.</summary>
+    string? SavePath(bool right);
 }
 
 /// <summary>In-memory pair, for tests and for callers that already parsed both sides.</summary>
@@ -70,6 +73,8 @@ public sealed class FileDiffSource(string? leftPath, string? rightPath) : IDiffS
         }
         return LoadResult<TagPair>.Success(new TagPair(left, right));
     }
+
+    public string? SavePath(bool right) => (right ? _rightDoc : _leftDoc)?.Path;
 
     public LoadResult<object> Save(bool right, NbtTag root)
     {
@@ -121,6 +126,8 @@ public sealed class ChunkDiffSource(RegionFile? left, RegionFile? right, int x, 
         }
         return LoadResult<TagPair>.Success(new TagPair(l, r));
     }
+
+    public string? SavePath(bool saveRight) => (saveRight ? right : left)?.Path;
 
     public LoadResult<object> Save(bool saveRight, NbtTag root)
     {

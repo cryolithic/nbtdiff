@@ -63,7 +63,7 @@ internal sealed class FakeDialogService : IDialogService
         return Task.FromResult(NextSaveFile);
     }
 
-    public Task<bool> ConfirmAsync(string title, string message)
+    public Task<bool> ConfirmAsync(string title, string message, string confirmLabel = "Discard")
     {
         Requests.Add($"confirm:{title}");
         return Task.FromResult(NextConfirm);

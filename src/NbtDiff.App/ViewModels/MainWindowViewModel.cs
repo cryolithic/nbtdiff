@@ -15,6 +15,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ISettingsService Settings { get; }
 
+    /// <summary>One per app session, so the backup prompt is shown once, before the first save.</summary>
+    public SaveGate SaveGate { get; }
+
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanGoBack), nameof(WindowTitle))] [NotifyCanExecuteChangedFor(nameof(BackCommand))]
     private ViewModelBase? _current;
 
@@ -37,6 +40,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _ui = ui;
         _fingerprinter = fingerprinter;
         Settings = settings ?? new SettingsService(null);
+        SaveGate = new SaveGate(dialogs);
     }
 
     public void Push(ViewModelBase vm)
@@ -89,7 +93,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             case FileKind.Region:
             {
-                var vm = new RegionCompareViewModel(leftPath, rightPath, leftFp, rightFp, _ui, Settings);
+                var vm = new RegionCompareViewModel(leftPath, rightPath, leftFp, rightFp, _ui, Settings, SaveGate);
                 vm.NavigationRequested += Push;
                 _ = vm.Load();
                 return vm;
@@ -97,7 +101,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case FileKind.Nbt:
             case FileKind.Snbt:
             {
-                var vm = new FileCompareViewModel(new FileDiffSource(leftPath, rightPath), _ui, Settings);
+                var vm = new FileCompareViewModel(new FileDiffSource(leftPath, rightPath), _ui, Settings, saveGate: SaveGate);
                 _ = vm.Load();
                 return vm;
             }
