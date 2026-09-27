@@ -8,8 +8,8 @@
 //
 // <file-list> holds world-relative paths, one per line (# comments); "{uuid}" stands for the
 // player's UUID in file names. Only files present in both snapshots are copied. The UUID is
-// replaced in every encoding (dashed/plain hex text, compound keys, [I;..] int arrays,
-// most/least longs) and the player name in all text, then every output file is re-read and the
+// replaced in every encoding (dashed/plain hex text, its 8-hex-digit prefix as FTB team names use
+// it, compound keys, [I;..] int arrays, most/least longs) and the player name in all text, then every output file is re-read and the
 // run fails if any trace remains. Region files are rebuilt from their chunks, so no stale
 // sectors survive; .snbt and .json are scrubbed as text, so their formatting is kept byte-exact.
 using System.Buffers.Binary;
@@ -103,6 +103,8 @@ sealed class Identity
             (new Regex(Regex.Escape(real.ToString("D")), RegexOptions.IgnoreCase), fake.ToString("D")),
             (new Regex(Regex.Escape(Hex(real)), RegexOptions.IgnoreCase), Hex(fake)),
             (new Regex(@"\[I;\s*" + string.Join(@"\s*,\s*", RealInts) + @"\s*\]"), "[I; " + string.Join(", ", FakeInts) + "]"),
+            // FTB names a player's team "<name>#<first 8 hex digits of the UUID>": scrub that prefix wherever it stands alone.
+            (new Regex(@"(?<![0-9A-Fa-f])" + Regex.Escape(Hex(real)[..8]) + @"(?![0-9A-Fa-f])", RegexOptions.IgnoreCase), Hex(fake)[..8]),
             (new Regex(@"(?<![A-Za-z0-9_])" + Regex.Escape(name) + @"(?![A-Za-z0-9_])", RegexOptions.IgnoreCase), fakeName),
         ];
     }
@@ -121,7 +123,18 @@ sealed class Identity
         return s;
     }
 
-    public bool TextLeaks(string s) => _text.Any(t => t.Pattern.IsMatch(s));
+    /// <summary>
+    /// Any known encoding, or any 8-character run of the UUID's hex digits (catches partial copies
+    /// in shapes the scrubber does not know about, not just FTB's team-name prefix).
+    /// </summary>
+    public bool TextLeaks(string s)
+    {
+        if (_text.Any(t => t.Pattern.IsMatch(s))) return true;
+        string hex = Real.ToString("N");
+        for (int i = 0; i + 8 <= hex.Length; i++)
+            if (s.Contains(hex.Substring(i, 8), StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
 
     public byte[] RealBytes => Convert.FromHexString(Real.ToString("N"));
 }
