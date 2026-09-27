@@ -13,3 +13,7 @@ TestResults/
 # coverage output
 coverage*
 *.dcvr
+
+# design notes and build plan: local only (CLAUDE.md points at them)
+docs/DESIGN.md
+docs/PLAN.md

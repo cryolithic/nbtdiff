@@ -12,6 +12,9 @@ Open items are listed under S8 in the plan. Tests: 808 (290 Nbt / 345 Core / 173
 
 ## Where to look first
 
+`docs/DESIGN.md` and `docs/PLAN.md` are local-only (gitignored since 2026-09-27); a fresh clone
+will not have them.
+
 - `docs/DESIGN.md` — architecture and the public contracts each project exposes.
 - `docs/PLAN.md` — build stages S0–S8 with dependencies, deliverables, and acceptance tests. Pick
   up the lowest unfinished stage; check its "Needs" line before starting.

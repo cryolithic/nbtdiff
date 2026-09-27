@@ -156,8 +156,6 @@ CI builds and tests on Windows and Ubuntu on every push and pull request. Pushes
 tags and manual runs also publish all four builds as workflow artifacts; a `v*` tag creates a
 GitHub release with them attached (`v0.*` tags are marked pre-release).
 
-Design notes: `docs/DESIGN.md`. Build stages: `docs/PLAN.md`.
-
 ## License
 
 MIT, see [LICENSE](LICENSE). Third-party components and their licenses are listed in
