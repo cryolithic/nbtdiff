@@ -9,7 +9,7 @@ are read, and reordered entity or item lists are matched by identity instead of 
 
 Runs on Windows and Linux.
 
-<!-- Screenshots: folder compare, region chunk grid, tag diff. -->
+![World compare: two copies of a modded world side by side, mid-scan](docs/screenshots/folder-compare.png)
 
 ## Features
 
@@ -33,6 +33,19 @@ Runs on Windows and Linux.
 - **Formats:** Java NBT (`level.dat`, player data, `.nbt`, `.schematic`/`.litematic` and other
   gzip/zlib/uncompressed NBT), region files (`.mca`, `.mcr`, external `.mcc` chunks), SNBT including
   FTB's dialect, and Bedrock NBT / `level.dat` (compare only).
+
+<table>
+<tr>
+<td><img src="docs/screenshots/region-grid.png" alt="Region view: 32×32 chunk grid coloured by state"></td>
+<td><img src="docs/screenshots/chunk-diff.png" alt="Chunk tag diff: one changed value inside an entity"></td>
+</tr>
+<tr>
+<td align="center">Region view: which chunks changed</td>
+<td align="center">Chunk tag diff, stepping through changed chunks</td>
+</tr>
+</table>
+
+![FTB Quests progress file (.snbt): quests completed on the right only](docs/screenshots/snbt-diff.png)
 
 ## Download
 
