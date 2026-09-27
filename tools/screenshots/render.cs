@@ -17,8 +17,26 @@ using NbtDiff.Core;
 
 string outDir = Path.GetFullPath(args.Length > 0 ? args[0] : "screenshots");
 var variant = args.Length > 1 && args[1] == "light" ? ThemeVariant.Light : ThemeVariant.Dark;
-string data = Path.GetFullPath(Path.Combine("tests", "data", "real", "neoforge"));
+string fixtures = Path.GetFullPath(Path.Combine("tests", "data", "real", "neoforge"));
 Directory.CreateDirectory(outDir);
+
+// Work on copies with neutral names, addressed by relative paths, so no machine path shows in a shot.
+string work = Path.Combine(outDir, "worlds");
+if (Directory.Exists(work)) Directory.Delete(work, recursive: true);
+CopyTree(Path.Combine(fixtures, "initial"), Path.Combine(work, "Modpack World"));
+CopyTree(Path.Combine(fixtures, "expected"), Path.Combine(work, "Modpack World (later)"));
+Directory.SetCurrentDirectory(work);
+string left = "Modpack World", right = "Modpack World (later)";
+
+static void CopyTree(string from, string to)
+{
+    foreach (var file in Directory.EnumerateFiles(from, "*", SearchOption.AllDirectories))
+    {
+        var target = Path.Combine(to, Path.GetRelativePath(from, file));
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.Copy(file, target);
+    }
+}
 
 AppBuilder.Configure<App>()
     .UseSkia()
@@ -52,18 +70,19 @@ void Snap(string name)
 }
 
 // Folder compare of the NeoForge fixture pair.
-shell.Start([Path.Combine(data, "initial"), Path.Combine(data, "expected")]);
+shell.Start([left, right]);
 var folder = (FolderCompareViewModel)shell.Current!;
 Settle(folder.ScanCompletion);
 Snap("folder");
 
-// Region grid, then the first changed chunk.
-var region = (RegionCompareViewModel)shell.CreateCompareView(FileKind.Region,
-    Path.Combine(data, "initial", "entities", "r.0.0.mca"), Path.Combine(data, "expected", "entities", "r.0.0.mca"));
-shell.Push(region);
+// Region grid (opened from the folder view, so the breadcrumb is real), then the first changed chunk.
+folder.SelectedRow = folder.Tree.Rows.Single(i => i.RelativePath == "entities/r.0.0.mca");
+folder.OpenSelectedCommand.Execute(null);
+var region = (RegionCompareViewModel)shell.Current!;
 Settle(region.LoadCompletion);
 var cell = region.Grid.Cells.First(c => c.Status == ChunkDiffStatus.Different);
 region.SelectCommand.Execute(cell);
+Settle();
 Settle();
 Snap("region");
 
@@ -74,11 +93,11 @@ chunk.SelectedItem = chunk.Tree.Rows.FirstOrDefault(i => i.DeltaText is not null
 Settle();
 Snap("tag");
 
-// FTB quest progress (SNBT) tag diff.
-var snbt = (FileCompareViewModel)shell.CreateCompareView(FileKind.Snbt,
-    Path.Combine(data, "initial", "ftbquests", "11111111-2222-4333-8444-555555555555.snbt"),
-    Path.Combine(data, "expected", "ftbquests", "11111111-2222-4333-8444-555555555555.snbt"));
-shell.Push(snbt);
+// FTB quest progress (SNBT) tag diff, opened from the folder view.
+Settle(shell.NavigateToCommand.ExecuteAsync(0));
+folder.SelectedRow = folder.Tree.Rows.Single(i => i.RelativePath.StartsWith("ftbquests/", StringComparison.Ordinal) && !i.IsDirectory);
+folder.OpenSelectedCommand.Execute(null);
+var snbt = (FileCompareViewModel)shell.Current!;
 Settle(snbt.LoadCompletion);
 Snap("snbt");
 return 0;

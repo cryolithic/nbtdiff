@@ -9,21 +9,24 @@ are read, and reordered entity or item lists are matched by identity instead of 
 
 Runs on Windows and Linux.
 
-![World compare: two copies of a modded world side by side, mid-scan](docs/screenshots/folder-compare.png)
+![World compare: two copies of a modded world side by side](docs/screenshots/folder-compare.png)
 
 ## Features
 
 - **World compare.** Two world folders side by side as a tree with per-row states (same /
-  different / left only / right only / unreadable). Folders roll up the state of their contents;
-  filters show only differences, orphans or errors.
+  different / left only / right only / unreadable). Collapsed folders take the colour of what is
+  inside them and show their counts; filters with counts show only differences, one side, or errors.
 - **Only real differences.** Chunk timestamps, region sector layout and recompression are not
   differences. A fast byte-level pass finds candidates, then only those files are parsed and
   compared by content. Tags that change on every save (`LastUpdate`) are ignored by default.
-- **Region view.** A 32×32 grid of a region file's chunks, coloured by state; open any chunk for its
-  tag diff and step through the changed chunks with `Ctrl+F7` / `Ctrl+F8`.
-- **Tag diff.** An aligned tree of both sides: changed values, added and removed tags, type
-  changes, array differences. Lists of entities, block entities and items are matched by UUID,
-  position or id, so a reordered list is not reported as changed.
+- **Region view.** A 32×32 grid of a region file's chunks, coloured by state, with a panel that
+  shows the selected chunk's world coordinates and its first few changes before you open it. The
+  legend doubles as a filter; open any chunk for its tag diff and step through the changed chunks
+  with `Ctrl+F7` / `Ctrl+F8`.
+- **Tag diff.** An aligned tree of both sides: changed values (with the numeric delta), added and
+  removed tags, type changes, array differences. Lists of entities, block entities and items are
+  matched by UUID, position or id, so a reordered list is not reported as changed. The selected
+  tag's full values and NBT path sit in a detail pane.
 - **Text diff** for the other files in a world or modpack (`.json`, `.toml`, `.cfg`, `.properties`,
   `.yml`, logs…).
 - **Export** a folder compare as a text or JSON report.
@@ -41,12 +44,12 @@ Runs on Windows and Linux.
 <td><img src="docs/screenshots/chunk-diff.png" alt="Chunk tag diff: one changed value inside an entity"></td>
 </tr>
 <tr>
-<td align="center">Region view: which chunks changed</td>
-<td align="center">Chunk tag diff, stepping through changed chunks</td>
+<td align="center">Region view: which chunks changed, and what changed in the selected one</td>
+<td align="center">Chunk tag diff with value deltas and the detail pane</td>
 </tr>
 </table>
 
-![FTB Quests progress file (.snbt): quests completed on the right only](docs/screenshots/snbt-diff.png)
+![FTB Quests progress file (.snbt): quests completed and started on the right only](docs/screenshots/snbt-diff.png)
 
 ## Download
 
@@ -80,16 +83,17 @@ entry, and press Compare.
 
 ### Folder view
 
-Row states: `=` same · `≠` different · `≠?` bytes differ but content not yet verified · blue = left
-only · purple = right only · struck through = unreadable. Double-click a file to open it; a folder
+Row states: red `≠` different · dashed `≠?` bytes differ but content not yet verified · blue `◀`
+left only · purple `▶` right only · faint `=` same · struck through = unreadable. Double-click a
+file to open it; the breadcrumb at the top leads back to any level (or press `Esc`), and a folder
 scan keeps its state when you come back.
 
-The status bar says which pass is running: `pass 1 of 2 — hashing bytes` reads every file once
-without decompressing; `pass 2 of 2 — verifying content n/m` parses only the files whose bytes
+The status bar says which pass is running: `Pass 1 of 2 · hashing bytes` reads every file once
+without decompressing; `Pass 2 of 2 · verifying content n/m` parses only the files whose bytes
 differed. Until pass 2 has settled a row (or with Deep verify off) it shows `≠?`, never `≠`.
 Opening such a region verifies it and says so in the header when every chunk turns out identical.
 
-Options:
+Compare options (the button above the tree, which also shows the current settings):
 
 - **Ignore tags** — tag paths that are not content. Default `LastUpdate, Level/LastUpdate`; add
   `InhabitedTime` if you want that ignored too.
@@ -108,7 +112,7 @@ Options:
 | `Ctrl+F8` / `Ctrl+F7` | — | — | next / previous changed chunk of the region (chunk views only) |
 | `Alt+→` / `Alt+←` | — | — | copy the selected row's value or subtree to the other side |
 | `Ctrl+S` | — | — | save edited side(s) |
-| `◀ Back` button | | return to the previous view | |
+| `Esc` / breadcrumb | | back to the previous view, or any earlier level | |
 
 ## Editing and saving
 
