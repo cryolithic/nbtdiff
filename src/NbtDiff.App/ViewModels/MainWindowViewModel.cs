@@ -19,10 +19,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>One per app session, so the backup prompt is shown once, before the first save.</summary>
     public SaveGate SaveGate { get; }
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanGoBack), nameof(WindowTitle))] [NotifyCanExecuteChangedFor(nameof(BackCommand))]
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanGoBack), nameof(WindowTitle), nameof(Crumbs))] [NotifyCanExecuteChangedFor(nameof(BackCommand))]
     private ViewModelBase? _current;
 
     public bool CanGoBack => _stack.Count > 1;
+
+    /// <summary>The breadcrumb over the navigation stack (#13): each view contributes its labels; earlier ones pop back to that level.</summary>
+    public IReadOnlyList<Crumb> Crumbs
+    {
+        get
+        {
+            var crumbs = new List<Crumb>();
+            for (int level = 0; level < _stack.Count; level++)
+            {
+                var labels = _stack[level].CrumbLabels;
+                for (int i = 0; i < labels.Count; i++)
+                    crumbs.Add(new Crumb(labels[i], level, level == _stack.Count - 1 && i == labels.Count - 1, crumbs.Count == 0));
+            }
+            return crumbs;
+        }
+    }
     public string WindowTitle => Current is null ? "nbt-diff" : $"nbt-diff — {Current.Title}";
     public IReadOnlyList<ViewModelBase> Stack => _stack;
 
@@ -55,26 +71,43 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void OnCurrentTitleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ViewModelBase.Title) && ReferenceEquals(sender, Current))
+        {
             OnPropertyChanged(nameof(WindowTitle));
+            OnPropertyChanged(nameof(Crumbs));
+        }
     }
 
     /// <summary>Pops the current view. The view below keeps its state (a folder scan is not restarted); the popped view is disposed if it owns resources. Unsaved copies are confirmed first.</summary>
     [RelayCommand(CanExecute = nameof(CanGoBack))]
-    private async Task BackAsync()
+    private Task BackAsync() => PopToAsync(_stack.Count - 2);
+
+    /// <summary>Pops back to a breadcrumb's level (#13), with the same unsaved-copies confirmation and disposal as Back.</summary>
+    [RelayCommand]
+    private Task NavigateToAsync(int level) => PopToAsync(level);
+
+    private async Task PopToAsync(int level)
     {
-        if (_stack.Count <= 1) return;
+        if (level < 0 || level >= _stack.Count - 1) return;
         if (!await ConfirmDiscardEditsAsync()) return;
-        var popped = _stack[^1];
-        popped.PropertyChanged -= OnCurrentTitleChanged;
-        _stack.RemoveAt(_stack.Count - 1);
+        while (_stack.Count - 1 > level)
+        {
+            var popped = _stack[^1];
+            popped.PropertyChanged -= OnCurrentTitleChanged;
+            _stack.RemoveAt(_stack.Count - 1);
+            (popped as IDisposable)?.Dispose();
+        }
         Current = _stack[^1];
-        (popped as IDisposable)?.Dispose();
     }
 
     public FolderCompareViewModel NewFolderCompare()
     {
         var vm = new FolderCompareViewModel(_dialogs, _ui, _fingerprinter, Settings);
-        vm.NavigationRequested += row => Push(CreateCompareView(row.Kind, row.Left?.FullPath, row.Right?.FullPath, row.Left?.Fingerprint, row.Right?.Fingerprint));
+        vm.NavigationRequested += row =>
+        {
+            var view = CreateCompareView(row.Kind, row.Left?.FullPath, row.Right?.FullPath, row.Left?.Fingerprint, row.Right?.Fingerprint);
+            view.CrumbPath = row.RelativePath;
+            Push(view);
+        };
         // Two file paths typed into the folder view open the pair's compare view directly.
         vm.FilePairRequested += (left, right) =>
         {

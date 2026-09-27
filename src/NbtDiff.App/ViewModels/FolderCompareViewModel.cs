@@ -33,6 +33,10 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     }
 
     public override string Title => "Folder compare";
+
+    /// <summary>The breadcrumb names the world being compared (the left folder's name).</summary>
+    public override IReadOnlyList<string> CrumbLabels =>
+        [Path.GetFileName(LeftPath.TrimEnd('/', '\\')) is { Length: > 0 } name ? name : Title];
     public FlatTreeSource<CompareRowItem> Tree { get; } = new();
     public CompareRoot? Current { get; private set; }
     /// <summary>Completes after the UI has flushed the final state of every row. For tests.</summary>
@@ -55,6 +59,23 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     [ObservableProperty] private RowFilter _filter = RowFilter.All;
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(CompareCommand), nameof(CancelCommand), nameof(ExportCommand))] private bool _isScanning;
     [ObservableProperty] private string _statusText = "Choose two folders and press Compare.";
+    /// <summary>Counts of the whole compare, for the filter badges and the status bar chips (#10).</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(DifferencesCount))] private RowCounts _counts;
+    /// <summary>What the scan is doing, e.g. <c>Pass 1 of 2 · hashing bytes in region/</c>; empty when idle.</summary>
+    [ObservableProperty] private string _passText = "";
+    public int DifferencesCount => Counts.Different + Counts.ProbablyDifferent + Counts.LeftOnly + Counts.RightOnly;
+    /// <summary>Summary shown on the Compare options button, so the settings stay visible: <c>Deep verify · keyed lists · 2 ignored tags</c>.</summary>
+    public string OptionsSummary
+    {
+        get
+        {
+            int ignored = TagIgnoreSet.ParseList(IgnoredTagsText).Paths.Count;
+            var parts = new List<string>(3) { DeepVerify ? "Deep verify" : "Quick scan" };
+            if (UseKeyedAligner) parts.Add("keyed lists");
+            parts.Add(ignored == 0 ? "no ignored tags" : ignored == 1 ? "1 ignored tag" : $"{ignored} ignored tags");
+            return string.Join(" · ", parts);
+        }
+    }
     [ObservableProperty] private double _progressFraction;
     [ObservableProperty] private CompareRowItem? _selectedRow;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasError))] private string? _errorMessage;
@@ -98,18 +119,29 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     {
         _settings.Current.DeepVerify = value;
         _settings.Save();
+        OnPropertyChanged(nameof(OptionsSummary));
     }
 
     partial void OnUseKeyedAlignerChanged(bool value)
     {
         _settings.Current.UseKeyedAligner = value;
         _settings.Save();
+        OnPropertyChanged(nameof(OptionsSummary));
     }
 
     partial void OnIgnoredTagsTextChanged(string value)
     {
         _settings.Current.IgnoredTags = TagIgnoreSet.ParseList(value).Paths.ToList();
         _settings.Save();
+        OnPropertyChanged(nameof(OptionsSummary));
+    }
+
+    /// <summary>Swaps the two paths; a finished compare is re-run so the results swap too.</summary>
+    [RelayCommand]
+    private void Swap()
+    {
+        (LeftPath, RightPath) = (RightPath, LeftPath);
+        if (HasResult && !IsScanning && CompareCommand.CanExecute(null)) CompareCommand.Execute(null);
     }
 
     /// <summary>Picking a recent pair fills both paths and compares; the picker then clears so it can be picked again.</summary>
@@ -250,6 +282,7 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
     {
         if (Current is null) return;
         var counts = Current.Root.Counts;
+        Counts = counts;
         var p = LatestProgress;
         string summary = CompareRowItem.DescribeCounts(counts);
         if (IsScanning)
@@ -260,10 +293,14 @@ public sealed partial class FolderCompareViewModel : ViewModelBase
                 ? $"pass 2 of 2 — verifying content {p.Tier2Done}/{p.Tier2Queued}"
                 : $"pass 1 of 2 — hashing bytes{(_lastChangedDir is { Length: > 0 } d ? $" in {d}/" : "")} ({p.Fraction:P0})";
             StatusText = $"{summary} · {where}";
+            PassText = p.Tier1Complete && p.Tier2Queued > 0
+                ? $"Pass 2 of 2 · verifying content {p.Tier2Done}/{p.Tier2Queued}"
+                : $"Pass 1 of 2 · hashing bytes{(_lastChangedDir is { Length: > 0 } dir ? $" in {dir}/" : "")}";
         }
         else
         {
             StatusText = Current.IsCancelled ? $"{summary} · cancelled" : summary;
+            PassText = Current.IsCancelled ? "Cancelled" : "";
         }
     }
 

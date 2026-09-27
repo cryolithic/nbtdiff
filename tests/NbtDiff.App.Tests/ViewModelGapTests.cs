@@ -179,7 +179,8 @@ public class ViewModelGapTests
         {
             Assert.True(CompareRowItem.Matches(RowFilter.All, s));
             Assert.Equal(s == RowStatus.Same, CompareRowItem.Matches(RowFilter.Same, s));
-            Assert.Equal(s is RowStatus.LeftOnly or RowStatus.RightOnly, CompareRowItem.Matches(RowFilter.Orphans, s));
+            Assert.Equal(s == RowStatus.LeftOnly, CompareRowItem.Matches(RowFilter.LeftOnly, s));
+            Assert.Equal(s == RowStatus.RightOnly, CompareRowItem.Matches(RowFilter.RightOnly, s));
             Assert.Equal(s == RowStatus.Error, CompareRowItem.Matches(RowFilter.Errors, s));
             Assert.Equal(s is RowStatus.Different or RowStatus.ProbablyDifferent or RowStatus.LeftOnly or RowStatus.RightOnly,
                 CompareRowItem.Matches(RowFilter.Differences, s));

@@ -261,4 +261,47 @@ public class MainWindowViewModelTests
         Assert.IsType<FileCompareViewModel>(shell.CreateCompareView(FileKind.Snbt, d.File("b.snbt"), d.File("b.snbt")));
         Assert.IsType<FileCompareViewModel>(shell.CreateCompareView(FileKind.Snbt, null, d.File("b.snbt")));
     }
+    [Fact]
+    public async Task Crumbs_WorldFolderFileAndChunk_JumpBackToAnyLevel()
+    {
+        var world = new WorldBuilder(seed: 42).WithRegion(-1, 1, chunks: 3).WithLevelDat();
+        using var l = new TempDir();
+        using var r = new TempDir();
+        world.Write(l.Path);
+        world.Mutate(m => m.Chunk(-1, 1, 1, 0).SetPath("InhabitedTime", 999L)).Write(r.Path);
+        var dialogs = new FakeDialogService();
+        var shell = new MainWindowViewModel(dialogs, new ImmediateUiDispatcher());
+        shell.Start([l.Path, r.Path]);
+        var folder = Assert.IsType<FolderCompareViewModel>(shell.Current);
+        await folder.ScanCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        string worldName = Path.GetFileName(l.Path);
+        Assert.Equal([worldName], shell.Crumbs.Select(c => c.Label));
+
+        folder.SelectedRow = folder.Tree.Rows.Single(i => i.RelativePath == "region/r.-1.1.mca");
+        folder.OpenSelectedCommand.Execute(null);
+        var region = Assert.IsType<RegionCompareViewModel>(shell.Current);
+        await region.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal([worldName, "region", "r.-1.1.mca"], shell.Crumbs.Select(c => c.Label));
+        Assert.Equal([0, 1, 1], shell.Crumbs.Select(c => c.Level));
+        Assert.Equal("chunks x −32…−1, z 32…63", region.CrumbNote);
+
+        region.OpenSelectedCommand.Execute(null);
+        var chunk = Assert.IsType<FileCompareViewModel>(shell.Current);
+        await chunk.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal([worldName, "region", "r.-1.1.mca", "chunk (1, 0)"], shell.Crumbs.Select(c => c.Label));
+        Assert.True(shell.Crumbs[^1].IsCurrent);
+        Assert.Equal(1, shell.Crumbs.Count(c => c.IsCurrent));
+
+        // Unsaved copies block the jump until confirmed; then two levels pop at once.
+        chunk.SelectedItem = chunk.Root;
+        await chunk.CopyToLeftCommand.ExecuteAsync(null);
+        dialogs.NextConfirm = false;
+        await shell.NavigateToCommand.ExecuteAsync(0);
+        Assert.Same(chunk, shell.Current);
+        dialogs.NextConfirm = true;
+        await shell.NavigateToCommand.ExecuteAsync(0);
+        Assert.Same(folder, shell.Current);
+        Assert.Single(shell.Stack);
+        Assert.True(region.IsDisposed);
+    }
 }

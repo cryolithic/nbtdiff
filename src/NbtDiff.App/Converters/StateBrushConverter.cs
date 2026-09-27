@@ -32,3 +32,11 @@ public sealed class StateBrushConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
+
+/// <summary>Small value converters used from XAML via x:Static.</summary>
+public static class Conv
+{
+    public static readonly FuncValueConverter<int, bool> Positive = new(v => v > 0);
+    /// <summary>A number with thin-space thousands separators, as in the mockups: 3 539.</summary>
+    public static readonly FuncValueConverter<int, string> Count = new(v => v.ToString("#,0", CultureInfo.InvariantCulture).Replace(",", " "));
+}

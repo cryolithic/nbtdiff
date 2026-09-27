@@ -32,6 +32,10 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     private int _generation;
 
     public override string Title => _source.Title;
+
+    /// <summary>A chunk view's crumb is <c>chunk (x, z)</c> under its region's crumbs.</summary>
+    public override IReadOnlyList<string> CrumbLabels =>
+        _source is ChunkDiffSource c ? [$"chunk ({c.X}, {c.Z})"] : base.CrumbLabels;
     public FlatTreeSource<DiffNodeItem> Tree { get; } = new();
     public DiffNodeItem? Root => _root;
     /// <summary>Changed nodes in navigation (pre-order) order.</summary>

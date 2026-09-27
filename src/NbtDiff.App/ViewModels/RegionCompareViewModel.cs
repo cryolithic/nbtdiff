@@ -25,6 +25,14 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
     private int _generation;
 
     public override string Title => FileDiffSource.PairTitle(_leftPath, _rightPath);
+
+    /// <summary>The world chunk range this region covers, from its file name (<c>r.-1.1.mca</c> → x −32…−1, z 32…63).</summary>
+    public override string? CrumbNote =>
+        RegionCoords.FromFileName(_leftPath ?? _rightPath ?? "") is { } r
+            ? $"chunks x {Signed(r.X * 32)}…{Signed(r.X * 32 + 31)}, z {Signed(r.Z * 32)}…{Signed(r.Z * 32 + 31)}"
+            : null;
+
+    internal static string Signed(int v) => v < 0 ? "−" + (-v).ToString(System.Globalization.CultureInfo.InvariantCulture) : v.ToString(System.Globalization.CultureInfo.InvariantCulture);
     public RegionGridModel Grid { get; } = new();
     public string LeftPathText => _leftPath ?? "(missing)";
     public string RightPathText => _rightPath ?? "(missing)";
