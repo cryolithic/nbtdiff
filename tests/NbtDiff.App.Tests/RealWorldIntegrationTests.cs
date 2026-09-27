@@ -66,8 +66,8 @@ public class RealWorldIntegrationTests
         int leftOnly = 0;
         foreach (var cell in region.Grid.Cells.Where(c => c.IsPresent && c.Status != ChunkDiffStatus.Same).ToList())
         {
-            // The app cannot delete a chunk: copying an absent side leaves nothing to save.
-            if (cell.Status == ChunkDiffStatus.LeftOnly) { leftOnly++; continue; }
+            // Copying the absent right side over a left-only chunk deletes it (#6).
+            if (cell.Status == ChunkDiffStatus.LeftOnly) leftOnly++;
             region.SelectCommand.Execute(cell);
             region.OpenSelectedCommand.Execute(null);
             await Loaded(chunk!);
@@ -77,7 +77,7 @@ public class RealWorldIntegrationTests
     }
 
     [Theory]
-    [InlineData("vanilla", 6)]    // six entity chunks despawned between the snapshots
+    [InlineData("vanilla", 6)]    // six entity chunks despawned between the snapshots: deleted by the merge
     [InlineData("neoforge", 0)]
     public async Task MergingEveryDifference_MakesTheWorkingCopyMatchExpected(string set, int expectedLeftOnlyChunks)
     {
@@ -116,12 +116,10 @@ public class RealWorldIntegrationTests
         Assert.NotEmpty(saved);
         Assert.Equal(["confirm:Back up before saving"], dialogs.Requests);   // asked once for the whole session
 
-        // Content now matches what Minecraft wrote, except text files and chunks the app cannot delete.
+        // Content now matches what Minecraft wrote, except text files (the app does not edit text).
         var after = await Compare(work.Path, expected);
         var remaining = Files(after.Root).Where(r => r.Status != RowStatus.Same).ToList();
-        Assert.All(remaining, r => Assert.True(
-            r.Kind is FileKind.Json or FileKind.Text || (r.Kind == FileKind.Region && expectedLeftOnlyChunks > 0),
-            $"{r.RelativePath} is still {r.Status}"));
+        Assert.All(remaining, r => Assert.True(r.Kind is FileKind.Json or FileKind.Text, $"{r.RelativePath} is still {r.Status}"));
         Assert.Equal(expectedLeftOnlyChunks, leftOnlyChunks);
 
         // Every saved file kept its original as .bak; files that were not edited are byte-identical.
@@ -150,7 +148,7 @@ public class RealWorldIntegrationTests
             foreach (var chunk in before.Chunks)
             {
                 chunk.ReadCompressedPayload().ValueOrThrow();
-                var now = after[chunk.X, chunk.Z]!;
+                if (after[chunk.X, chunk.Z] is not { } now) continue;   // deleted by the merge
                 now.ReadCompressedPayload().ValueOrThrow();
                 Assert.True(chunk.SchemeByte == now.SchemeByte, $"{written} ({chunk.X}, {chunk.Z}): scheme {chunk.SchemeByte} became {now.SchemeByte}");
             }

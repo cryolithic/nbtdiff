@@ -20,5 +20,5 @@ dotnet run tools/fixtures/make-real-fixtures.cs -- "<initial>" "<expected>" test
 dotnet run tools/fixtures/make-real-fixtures.cs -- verify tests/data/real <player-uuid> <player-name>
 ```
 
-Known gap: six entity chunks in `vanilla` exist only in `initial` (the entities despawned and
-Minecraft deleted the chunk records). nbt-diff cannot delete a chunk, so those stay different.
+Six entity chunks in `vanilla` exist only in `initial` (the entities despawned and Minecraft deleted
+the chunk records); the merge deletes them by copying the absent side over them.

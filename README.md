@@ -124,7 +124,8 @@ refreshes immediately. Edits stay in memory until `Ctrl+S` writes each edited si
 - The new file is written beside the old one and swapped in only once it is complete, so a failed or
   interrupted save leaves the original as it was.
 - A chunk is re-appended to its region file the way Minecraft itself saves; the chunk keeps its
-  compression scheme, and the region header is only pointed at it once it is on disk.
+  compression scheme, and the region header is only pointed at it once it is on disk. Copying a
+  missing chunk over an existing one deletes that chunk, as Minecraft does.
 - The first save of any file or region keeps the untouched original as `<file>.bak`
   (`r.0.0.mca.bak`, `level.dat.bak`, …). Later saves leave that backup alone.
 - Bedrock files are compared but not written.

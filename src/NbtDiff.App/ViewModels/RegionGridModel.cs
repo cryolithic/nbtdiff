@@ -94,6 +94,21 @@ public sealed partial class RegionGridModel : ObservableObject
 
     public void Clear() => Apply([]);
 
+    /// <summary>Replaces one cell's status (null: no chunk on either side any more) and recounts; the selection stays.</summary>
+    public void Update(int x, int z, ChunkDiffCell? cell)
+    {
+        var item = this[x, z];
+        item.Status = cell?.Status;
+        item.Error = cell?.Error;
+        Present = _cells.Count(c => c.Status is not null);
+        Same = _cells.Count(c => c.Status == ChunkDiffStatus.Same);
+        Different = _cells.Count(c => c.Status == ChunkDiffStatus.Different);
+        LeftOnly = _cells.Count(c => c.Status == ChunkDiffStatus.LeftOnly);
+        RightOnly = _cells.Count(c => c.Status == ChunkDiffStatus.RightOnly);
+        Errors = _cells.Count(c => c.Status == ChunkDiffStatus.Error);
+        OnPropertyChanged(nameof(CountsText));
+    }
+
     public void Select(int x, int z) => Selected = this[x, z];
 
     /// <summary>Moves the selection, clamped to the grid; from no selection, lands on (0, 0). Returns true if the selection changed.</summary>

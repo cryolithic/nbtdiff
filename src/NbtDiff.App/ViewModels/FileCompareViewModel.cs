@@ -71,6 +71,11 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     private readonly ISettingsService _settings;
     private readonly SaveGate? _saveGate;
 
+    /// <summary>Raised on the UI thread after a save wrote everything; <see cref="Source"/> says what was saved.</summary>
+    public event Action<FileCompareViewModel>? Saved;
+
+    public IDiffSource Source => _source;
+
     /// <param name="settings">Seeds and persists the compare toggles; null keeps them in memory.</param>
     /// <param name="navigation">Sibling chunks reachable with Next/Previous chunk; null for standalone files.</param>
     /// <param name="saveGate">Checked before every save (open world, backup prompt); null skips the checks (tests).</param>
@@ -379,8 +384,8 @@ public sealed partial class FileCompareViewModel : ViewModelBase
             var errors = new List<string>();
             void SaveSide(bool right, NbtTag? root, string side)
             {
-                if (root is null) { errors.Add($"The {side} side is empty; there is nothing to save"); return; }
-                var result = saver.Save(right, root);
+                if (root is null && !saver.CanDelete) { errors.Add($"The {side} side is empty; there is nothing to save"); return; }
+                var result = root is null ? saver.Delete(right) : saver.Save(right, root);
                 if (!result.Ok) errors.Add($"{side}: {result.Failure!.ToDetailedString()}");
             }
             if (saveLeft) SaveSide(right: false, tags.Left, "left");
@@ -403,6 +408,7 @@ public sealed partial class FileCompareViewModel : ViewModelBase
                 if (saveLeft) LeftModified = false;
                 if (saveRight) RightModified = false;
                 SaveStatusText = $"Saved {DateTime.Now:HH:mm:ss}";
+                Saved?.Invoke(this);
             }
             finally
             {

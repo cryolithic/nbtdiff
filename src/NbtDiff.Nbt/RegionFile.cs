@@ -162,6 +162,45 @@ public sealed class RegionFile : IDisposable
         });
     }
 
+    /// <summary>
+    /// Removes the chunk at local (x, z): its location and timestamp entries are cleared, which is how
+    /// Minecraft deletes a chunk (the sectors become dead space), and an external <c>.mcc</c> payload
+    /// file is removed. The region (and the .mcc) get the same one-time <c>.bak</c> as any write. An
+    /// absent chunk is not an error.
+    /// </summary>
+    public LoadResult<RegionFile> DeleteChunk(int x, int z)
+    {
+        if ((uint)x >= RegionCoords.ChunksPerAxis || (uint)z >= RegionCoords.ChunksPerAxis)
+            return LoadResult<RegionFile>.Fail($"Chunk coordinates ({x}, {z}) are outside the region");
+        return LoadResult<RegionFile>.Try($"Delete chunk ({x}, {z}) of {Path}", () =>
+        {
+            lock (_writeGate)
+            {
+                var existing = this[x, z];
+                if (existing is null) return this;
+                if (existing.IsExternal is null) existing.ReadCompressedPayload();   // learn whether it lives in a .mcc
+                SafeFile.BackupOnce(Path);
+                using (var handle = File.OpenHandle(Path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read | FileShare.Write))
+                {
+                    int slot = z * RegionCoords.ChunksPerAxis + x;
+                    Span<byte> zero = stackalloc byte[4];
+                    RandomAccess.Write(handle, zero, slot * 4);
+                    RandomAccess.Write(handle, zero, SectorSize + slot * 4);
+                    RandomAccess.FlushToDisk(handle);
+                }
+                if (existing.IsExternal == true && existing.WorldCoords is { } coords)
+                {
+                    string mcc = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path) ?? "", $"c.{coords.X}.{coords.Z}.mcc");
+                    SafeFile.BackupOnce(mcc);
+                    File.Delete(mcc);
+                }
+                _slots[z * RegionCoords.ChunksPerAxis + x] = null;
+                _chunks = _slots.Where(s => s is not null).Cast<ChunkRef>().ToList();
+                return this;
+            }
+        });
+    }
+
     private static NbtCompression ToCompression(byte scheme) => scheme switch
     {
         ChunkRef.SchemeGZip => NbtCompression.GZip,

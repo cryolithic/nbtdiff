@@ -64,6 +64,26 @@ public static class RegionDiffer
         return cells;
     }
 
+    /// <summary>
+    /// Re-checks one slot by content (after a save changed it); null when neither side has a chunk there.
+    /// Same classification as <see cref="Diff"/> without fingerprints.
+    /// </summary>
+    public static ChunkDiffCell? DiffCell(RegionFile? left, RegionFile? right, int x, int z, DiffOptions? options = null)
+    {
+        var lc = left?[x, z];
+        var rc = right?[x, z];
+        if (lc is null && rc is null) return null;
+        if (lc is null || rc is null)
+        {
+            var only = lc ?? rc!;
+            return only.IsCorruptHeader
+                ? new ChunkDiffCell(x, z, ChunkDiffStatus.Error, $"Chunk ({x}, {z}): {only.HeaderError}")
+                : new ChunkDiffCell(x, z, lc is null ? ChunkDiffStatus.RightOnly : ChunkDiffStatus.LeftOnly);
+        }
+        byte[]? scratchL = null, scratchR = null;
+        return CompareByContent(lc, rc, options ?? DiffOptions.Default, ref scratchL, ref scratchR);
+    }
+
     private static ChunkDiffCell CompareByContent(ChunkRef lc, ChunkRef rc, DiffOptions options, ref byte[]? scratchL, ref byte[]? scratchR)
     {
         scratchL ??= new byte[ChunkRef.MaxInlinePayload];

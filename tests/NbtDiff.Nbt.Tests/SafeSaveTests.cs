@@ -150,4 +150,47 @@ public class SafeSaveTests
         using var reopened = NbtAssert.Ok(RegionFile.Open(path));
         NbtAssert.Equal(Tiny(5, 5), NbtAssert.Ok(reopened[0, 0]!.ReadNbt()));
     }
+    // ── RegionFile.DeleteChunk (#6) ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void DeleteChunk_ClearsTheSlot_KeepsEveryOtherChunk_AndBacksUp()
+    {
+        using var d = new TempDir();
+        var path = d.File("r.0.0.mca");
+        RegionWriter.Write(path, [new ChunkSpec(0, 0, Tiny(0, 0)), new ChunkSpec(1, 0, Tiny(1, 0)), new ChunkSpec(2, 0, Tiny(2, 0))]);
+        var before = File.ReadAllBytes(path);
+
+        using (var region = NbtAssert.Ok(RegionFile.Open(path)))
+        {
+            NbtAssert.Ok(region.DeleteChunk(1, 0));
+            Assert.Null(region[1, 0]);
+            Assert.Equal(2, region.ChunkCount);
+            NbtAssert.Ok(region.DeleteChunk(5, 5));   // absent: nothing to do, not an error
+        }
+
+        Assert.Equal(before, File.ReadAllBytes(path + ".bak"));
+        using var reopened = NbtAssert.Ok(RegionFile.Open(path));
+        Assert.Null(reopened[1, 0]);
+        NbtAssert.Equal(Tiny(0, 0), NbtAssert.Ok(reopened[0, 0]!.ReadNbt()));
+        NbtAssert.Equal(Tiny(2, 0), NbtAssert.Ok(reopened[2, 0]!.ReadNbt()));
+    }
+
+    [Fact]
+    public void DeleteChunk_External_RemovesTheMcc_AfterBackingItUp()
+    {
+        using var d = new TempDir();
+        var path = d.File("r.0.0.mca");
+        RegionWriter.Write(path, [new ChunkSpec(0, 0, Tiny(0, 0), External: true), new ChunkSpec(1, 0, Tiny(1, 0))]);
+        var mcc = d.File("c.0.0.mcc");
+        var mccBefore = File.ReadAllBytes(mcc);
+
+        using (var region = NbtAssert.Ok(RegionFile.Open(path)))
+            NbtAssert.Ok(region.DeleteChunk(0, 0));   // never read: the state is learned first
+
+        Assert.False(File.Exists(mcc));
+        Assert.Equal(mccBefore, File.ReadAllBytes(mcc + ".bak"));
+        using var reopened = NbtAssert.Ok(RegionFile.Open(path));
+        Assert.Null(reopened[0, 0]);
+        NbtAssert.Equal(Tiny(1, 0), NbtAssert.Ok(reopened[1, 0]!.ReadNbt()));
+    }
 }

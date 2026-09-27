@@ -147,6 +147,7 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
         var cell = Grid.Selected;
         if (cell is not { IsPresent: true } || IsDisposed) return;
         var vm = new FileCompareViewModel(new ChunkDiffSource(_left, _right, cell.X, cell.Z, Title), _ui, _settings, ChangedChunkNavigation(), _saveGate);
+        vm.Saved += OnChunkSaved;
         _ = vm.Load();
         NavigationRequested?.Invoke(vm);
     }
@@ -156,6 +157,15 @@ public sealed partial class RegionCompareViewModel : ViewModelBase, IDisposable
     {
         var changed = Grid.Cells.Where(c => c.IsPresent && c.Status != ChunkDiffStatus.Same).Select(c => (c.X, c.Z)).ToList();
         return new ChunkNavigation(changed, (x, z) => new ChunkDiffSource(_left, _right, x, z, Title), (x, z) => Grid.Select(x, z));
+    }
+
+    /// <summary>A chunk view saved into these regions: re-check that slot so the grid is not stale when the user comes Back.</summary>
+    private void OnChunkSaved(FileCompareViewModel chunk)
+    {
+        if (chunk.Source is not ChunkDiffSource source || IsDisposed) return;
+        var options = (_settings?.Current ?? new AppSettings()).ToDiffOptions();
+        Grid.Update(source.X, source.Z, RegionDiffer.DiffCell(_left, _right, source.X, source.Z, options));
+        HeaderText = Grid.CountsText;
     }
 
     [RelayCommand]

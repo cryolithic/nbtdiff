@@ -26,6 +26,12 @@ public interface ISaveableDiffSource
 
     /// <summary>The file <see cref="Save"/> would write for that side, or null when the side has nowhere to save.</summary>
     string? SavePath(bool right);
+
+    /// <summary>True when an emptied side can be saved by deleting it (a chunk slot); false for whole files.</summary>
+    bool CanDelete => false;
+
+    /// <summary>Removes that side's data (only when <see cref="CanDelete"/>).</summary>
+    LoadResult<object> Delete(bool right) => LoadResult<object>.Fail("This side cannot be deleted");
 }
 
 /// <summary>In-memory pair, for tests and for callers that already parsed both sides.</summary>
@@ -128,6 +134,17 @@ public sealed class ChunkDiffSource(RegionFile? left, RegionFile? right, int x, 
     }
 
     public string? SavePath(bool saveRight) => (saveRight ? right : left)?.Path;
+
+    public bool CanDelete => true;
+
+    /// <summary>Copying an absent chunk over a present one deletes it from that region.</summary>
+    public LoadResult<object> Delete(bool deleteRight)
+    {
+        var region = deleteRight ? right : left;
+        if (region is null)
+            return LoadResult<object>.Fail(deleteRight ? "The right region file is not open" : "The left region file is not open");
+        return region.DeleteChunk(x, z).Map(r => (object)r);
+    }
 
     public LoadResult<object> Save(bool saveRight, NbtTag root)
     {

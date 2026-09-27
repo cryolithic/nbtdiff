@@ -189,4 +189,42 @@ public class RegionCompareViewModelTests
         Assert.Equal("InhabitedTime", Assert.Single(chunk.ChangedNodes).Path);
         Assert.Equal("999L", chunk.ChangedNodes[0].RightValueText);
     }
+    [Fact]
+    public async Task ChunkSaves_UpdateTheGrid_AndCopyingAMissingChunkDeletesIt()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        RegionWriter.Write(Region(l.Path), [new ChunkSpec(0, 0, WorldBuilder.MakeChunk(42, 0, 0)), new ChunkSpec(1, 0, WorldBuilder.MakeChunk(42, 1, 0))]);
+        var changed = WorldBuilder.MakeChunk(42, 0, 0);
+        changed.Add(new NbtInt("Extra", 1));
+        Directory.CreateDirectory(Path.Combine(r.Path, "region"));
+        RegionWriter.Write(Region(r.Path), [new ChunkSpec(0, 0, changed)]);   // (1, 0) exists only on the left
+
+        using var vm = await Loaded(Region(l.Path), Region(r.Path));
+        Assert.Equal(ChunkDiffStatus.Different, vm.Grid[0, 0].Status);
+        Assert.Equal(ChunkDiffStatus.LeftOnly, vm.Grid[1, 0].Status);
+        FileCompareViewModel? chunk = null;
+        vm.NavigationRequested += v => chunk = (FileCompareViewModel)v;
+
+        async Task CopyRootToLeftAndSave(int x, int z)
+        {
+            vm.SelectCommand.Execute(vm.Grid[x, z]);
+            vm.OpenSelectedCommand.Execute(null);
+            await chunk!.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+            chunk.SelectedItem = chunk.Root;
+            await chunk.CopyToLeftCommand.ExecuteAsync(null);
+            await chunk.SaveCommand.ExecuteAsync(null);
+            await chunk.LoadCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Null(chunk.ErrorMessage);
+        }
+
+        await CopyRootToLeftAndSave(0, 0);
+        Assert.Equal(ChunkDiffStatus.Same, vm.Grid[0, 0].Status);        // the grid is not stale
+
+        await CopyRootToLeftAndSave(1, 0);                                // the right side has no chunk here
+        Assert.Null(vm.Grid[1, 0].Status);                                // deleted: no chunk on either side
+        Assert.Equal("1 chunk · 1 same", vm.HeaderText);
+        using var reopened = RegionFile.Open(Region(l.Path)).ValueOrThrow();
+        Assert.Null(reopened[1, 0]);
+    }
 }
