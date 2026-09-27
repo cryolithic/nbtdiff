@@ -127,7 +127,7 @@ public class RealWorldIntegrationTests
         {
             string rel = Path.GetRelativePath(initial, file);
             string workFile = Path.Combine(work.Path, rel);
-            if (saved.Contains(rel))
+            if (saved.Contains(rel.Replace('\\', '/')))   // scan paths use '/' on every OS
             {
                 Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(workFile + ".bak"));
                 AssertSameEncoding(file, workFile);

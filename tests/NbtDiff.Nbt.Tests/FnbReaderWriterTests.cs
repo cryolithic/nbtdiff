@@ -365,7 +365,7 @@ public class FnbReaderWriterTests
         f.BufferSize = 123456;
         Assert.Equal(123456, f.BufferSize);
         var ex = Assert.Throws<ArgumentOutOfRangeException>(() => f.BufferSize = -1);
-        Assert.Equal("BufferSize cannot be negative. (Parameter 'value')\nActual value was -1.", ex.Message);
+        Assert.Equal("BufferSize cannot be negative. (Parameter 'value')" + Environment.NewLine + "Actual value was -1.", ex.Message);
     }
 
     [Fact]
@@ -377,7 +377,7 @@ public class FnbReaderWriterTests
             NbtFile.DefaultBufferSize = 1234;
             Assert.Equal(1234, new NbtFile().BufferSize);
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() => NbtFile.DefaultBufferSize = -1);
-            Assert.Equal("DefaultBufferSize cannot be negative. (Parameter 'value')\nActual value was -1.", ex.Message);
+            Assert.Equal("DefaultBufferSize cannot be negative. (Parameter 'value')" + Environment.NewLine + "Actual value was -1.", ex.Message);
             Assert.Equal(1234, NbtFile.DefaultBufferSize); // the throw did not change the value
         }
         finally
