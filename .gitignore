@@ -18,3 +18,10 @@ coverage*
 CLAUDE.md
 docs/DESIGN.md
 docs/PLAN.md
+
+# raw, unscrubbed inputs kept in the working copy: never commit (identity + paths)
+/Vanilla Initial/
+/Vanilla Expected/
+/NeoForge Initial/
+/NeoForge Expected/
+/Screenshot_*.png
