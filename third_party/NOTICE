@@ -61,7 +61,7 @@ Origin:  https://github.com/tryashtar/nbt-studio
          https://github.com/tryashtar/utils.utility
 License: NONE PUBLISHED. As of 2026-09-08 none of these repositories contains a LICENSE file
          and GitHub reports no detected license, which means the default "all rights reserved"
-         applies. See CLAUDE.md "Findings" for what this means for vendoring.
+         applies, so none of their code may be copied.
 
 Nothing from these three repositories is copied. The loaders (NbtDocument, RegionFile, ChunkRef)
 and the SNBT parser/writer in src/NbtDiff.Nbt are original code written for nbt-diff against the

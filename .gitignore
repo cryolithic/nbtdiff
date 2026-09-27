@@ -14,6 +14,7 @@ TestResults/
 coverage*
 *.dcvr
 
-# design notes and build plan: local only (CLAUDE.md points at them)
+# Claude Code notes, design notes and build plan: local only
+CLAUDE.md
 docs/DESIGN.md
 docs/PLAN.md
