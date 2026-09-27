@@ -205,4 +205,42 @@ public class RealWorldIntegrationTests
         Assert.Equal(path, single.Path);
         Assert.Equal(SnbtWriter.WriteValue(expectedValue), SnbtWriter.WriteValue(single.Right!));
     }
+    /// <summary>
+    /// For the one-off in-game check (#5): merges a full world pair the same way the test above does
+    /// and leaves the result for loading in Minecraft. Runs only when asked:
+    /// NBTDIFF_MERGE_LEFT=&lt;initial world&gt; NBTDIFF_MERGE_RIGHT=&lt;later world&gt; NBTDIFF_MERGE_OUT=&lt;new folder&gt;
+    /// dotnet test tests/NbtDiff.App.Tests --filter MergeFullWorld
+    /// </summary>
+    [Fact]
+    public async Task MergeFullWorld_ForTheInGameCheck()
+    {
+        string? left = Environment.GetEnvironmentVariable("NBTDIFF_MERGE_LEFT");
+        string? right = Environment.GetEnvironmentVariable("NBTDIFF_MERGE_RIGHT");
+        string? output = Environment.GetEnvironmentVariable("NBTDIFF_MERGE_OUT");
+        if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right) || string.IsNullOrEmpty(output)) return;
+        Assert.False(Directory.Exists(output), $"{output} already exists");
+
+        foreach (var file in Directory.EnumerateFiles(left, "*", SearchOption.AllDirectories))
+        {
+            if (Path.GetFileName(file) == "session.lock") continue;
+            var target = Path.Combine(output, Path.GetRelativePath(left, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target);
+        }
+        var gate = new SaveGate(new FakeDialogService());
+        var before = await Compare(output, right);
+        foreach (var row in Files(before.Root).Where(r => r.Status is RowStatus.Different or RowStatus.ProbablyDifferent))
+        {
+            string l = Path.Combine(output, row.RelativePath), r = Path.Combine(right, row.RelativePath);
+            if (row.Kind == FileKind.Region)
+                await MergeRegion(l, r, gate);
+            else if (row.Kind is FileKind.Nbt or FileKind.Snbt && new FileInfo(l).Length > 0 && new FileInfo(r).Length > 0)
+            {
+                var vm = new FileCompareViewModel(new FileDiffSource(l, r), new ImmediateUiDispatcher(), saveGate: gate);
+                await vm.Load().WaitAsync(TimeSpan.FromSeconds(60));
+                if (vm.ErrorMessage is null) await CopyWholeRightToLeftAndSave(vm, row.RelativePath);
+            }
+        }
+        foreach (var bak in Directory.EnumerateFiles(output, "*.bak", SearchOption.AllDirectories)) File.Delete(bak);
+    }
 }
