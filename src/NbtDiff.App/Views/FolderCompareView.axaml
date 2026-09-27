@@ -3,20 +3,19 @@
              xmlns:vm="using:NbtDiff.App.ViewModels"
              xmlns:svc="using:NbtDiff.App.Services"
              xmlns:conv="using:NbtDiff.App.Converters"
+             xmlns:ctl="using:NbtDiff.App.Controls"
              x:Class="NbtDiff.App.Views.FolderCompareView"
              x:DataType="vm:FolderCompareViewModel">
 
   <UserControl.Resources>
-    <conv:StatusBackgroundConverter x:Key="StatusBackground" />
     <conv:StatusDecorationConverter x:Key="StatusDecoration" />
-    <conv:StatusOpacityConverter x:Key="StatusOpacity" />
     <conv:DepthToMarginConverter x:Key="DepthToMargin" />
     <conv:EnumEqualsConverter x:Key="EnumEquals" />
   </UserControl.Resources>
 
   <UserControl.Styles>
     <Style Selector="DataGridRow">
-      <Setter Property="Background" Value="{ReflectionBinding Status, Converter={StaticResource StatusBackground}}" />
+      <Setter Property="Background" Value="{ReflectionBinding Tint, Converter={x:Static conv:StateBrushConverter.Instance}}" />
       <Setter Property="ToolTip.Tip" Value="{ReflectionBinding ToolTipText}" />
     </Style>
     <Style Selector="Button.expander">
@@ -30,79 +29,211 @@
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-    <Style Selector="RadioButton.chip">
-      <Setter Property="Margin" Value="0,0,8,0" />
-    </Style>
-    <Style Selector="TextBlock.placeholder">
-      <Setter Property="Opacity" Value="0.35" />
+    <Style Selector="Border.swatch">
+      <Setter Property="Width" Value="9" />
+      <Setter Property="Height" Value="9" />
+      <Setter Property="CornerRadius" Value="2" />
       <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="TextBlock.num">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style Selector="TextBlock.date">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
+    <Style Selector="TextBlock.older">
+      <Setter Property="Opacity" Value="0.55" />
     </Style>
   </UserControl.Styles>
 
   <DockPanel>
 
-    <!-- Toolbar -->
-    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
-      <Grid ColumnDefinitions="*,Auto,12,*,Auto,12,Auto,Auto,Auto" RowDefinitions="Auto">
-        <TextBox Grid.Column="0" Text="{Binding LeftPath}" PlaceholderText="Left folder" />
-        <Button Grid.Column="1" Content="…" Margin="4,0,0,0" Command="{Binding BrowseLeftCommand}" ToolTip.Tip="Browse for the left folder" />
-        <TextBox Grid.Column="3" Text="{Binding RightPath}" PlaceholderText="Right folder" />
-        <Button Grid.Column="4" Content="…" Margin="4,0,0,0" Command="{Binding BrowseRightCommand}" ToolTip.Tip="Browse for the right folder" />
-        <Button Grid.Column="6" Content="Compare" Command="{Binding CompareCommand}" Classes="accent" />
-        <Button Grid.Column="7" Content="Cancel" Margin="4,0,0,0" Command="{Binding CancelCommand}" />
-        <ComboBox Grid.Column="8" Margin="4,0,0,0" MinWidth="110" MaxWidth="360"
-                  PlaceholderText="Recent…" IsEnabled="{Binding HasRecent}"
-                  ItemsSource="{Binding RecentPairs}" SelectedItem="{Binding SelectedRecent}"
-                  ToolTip.Tip="Recently compared folder pairs">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="svc:RecentPair">
-              <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-      </Grid>
+    <!-- Path bar -->
+    <Border DockPanel.Dock="Top" Classes="bar" Padding="10,8">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto,8,Auto,8,*,Auto,12,Auto,6,Auto,6,Auto">
+          <TextBox Grid.Column="0" Classes="mono" Text="{Binding LeftPath}" PlaceholderText="Left folder or file" FontFamily="JetBrains Mono, Cascadia Mono, Consolas, DejaVu Sans Mono, monospace" />
+          <Button Grid.Column="1" Content="…" Margin="4,0,0,0" ToolTip.Tip="Browse for the left folder or file">
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem Header="Folder…" Command="{Binding BrowseLeftFolderCommand}" />
+                <MenuItem Header="File…" Command="{Binding BrowseLeftFileCommand}" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button Grid.Column="3" Content="⇄" Command="{Binding SwapCommand}" ToolTip.Tip="Swap left and right" />
+          <TextBox Grid.Column="5" Text="{Binding RightPath}" PlaceholderText="Right folder or file" FontFamily="JetBrains Mono, Cascadia Mono, Consolas, DejaVu Sans Mono, monospace" />
+          <Button Grid.Column="6" Content="…" Margin="4,0,0,0" ToolTip.Tip="Browse for the right folder or file">
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem Header="Folder…" Command="{Binding BrowseRightFolderCommand}" />
+                <MenuItem Header="File…" Command="{Binding BrowseRightFileCommand}" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button Grid.Column="8" Content="Cancel" Command="{Binding CancelCommand}" />
+          <Button Grid.Column="10" Content="Compare" Command="{Binding CompareCommand}" Classes="primary" Padding="16,5" />
+          <ComboBox Grid.Column="12" MinWidth="110" MaxWidth="360"
+                    PlaceholderText="Recent" IsEnabled="{Binding HasRecent}"
+                    ItemsSource="{Binding RecentPairs}" SelectedItem="{Binding SelectedRecent}"
+                    ToolTip.Tip="Recently compared pairs">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="svc:RecentPair">
+                <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
 
-      <WrapPanel ItemSpacing="4" LineSpacing="4">
-        <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,6,0" />
-        <RadioButton Classes="chip" GroupName="filter" Content="All"
-                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=All, Mode=OneWay}"
-                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.All}" />
-        <RadioButton Classes="chip" GroupName="filter" Content="Differences"
-                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Differences, Mode=OneWay}"
-                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Differences}" />
-        <RadioButton Classes="chip" GroupName="filter" Content="Same"
-                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Same, Mode=OneWay}"
-                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Same}" />
-        <RadioButton Classes="chip" GroupName="filter" Content="Orphans"
-                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Orphans, Mode=OneWay}"
-                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Orphans}" />
-        <RadioButton Classes="chip" GroupName="filter" Content="Errors"
-                     IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Errors, Mode=OneWay}"
-                     Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Errors}"
-                     ToolTip.Tip="Files unreadable on either side" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <CheckBox Content="Deep verify" IsChecked="{Binding DeepVerify}" ToolTip.Tip="Parse files whose bytes differ, so recompression is not reported as a change" />
-        <CheckBox Content="Match list items by key" IsChecked="{Binding UseKeyedAligner}"
-                  ToolTip.Tip="Pair entities by UUID, block entities by position, items by id, so a reordered list is not a difference. Applies to the scan, the chunk grid and the tag views." />
-        <TextBlock Text="Ignore tags:" VerticalAlignment="Center" Margin="4,0,0,0" />
-        <TextBox Text="{Binding IgnoredTagsText}" Width="220" VerticalAlignment="Center"
-                 ToolTip.Tip="Tag paths that are not content, comma-separated. Default LastUpdate (the chunk save tick Minecraft rewrites on every save). Lists are transparent; * matches one key. Takes effect on the next compare." />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <Button Content="Expand all" Command="{Binding ExpandAllCommand}" />
-        <Button Content="Collapse all" Command="{Binding CollapseAllCommand}" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <Button Content="Export text" Command="{Binding ExportCommand}" CommandParameter="text" />
-        <Button Content="Export JSON" Command="{Binding ExportCommand}" CommandParameter="json" />
-      </WrapPanel>
+        <!-- Filters (left) and options, tree and export (right) on one row -->
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+            <Button ToolTip.Tip="Deep verify, list matching and ignored tags. Take effect on the next compare.">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="Compare options" VerticalAlignment="Center" />
+                <TextBlock Classes="muted small" Text="{Binding OptionsSummary}" VerticalAlignment="Center" />
+                <TextBlock Classes="muted" Text="⌄" VerticalAlignment="Center" />
+              </StackPanel>
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <StackPanel Spacing="10" Width="360" Margin="4">
+                    <CheckBox Content="Deep verify" IsChecked="{Binding DeepVerify}"
+                              ToolTip.Tip="Parse files whose bytes differ, so recompression is not reported as a change" />
+                    <CheckBox Content="Match list items by key" IsChecked="{Binding UseKeyedAligner}"
+                              ToolTip.Tip="Pair entities by UUID, block entities by position, items by id, so a reordered list is not a difference" />
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="Ignore tags" />
+                      <TextBox Text="{Binding IgnoredTagsText}"
+                               ToolTip.Tip="Tag paths that are not content, comma-separated. Default LastUpdate (the chunk save tick Minecraft rewrites on every save). Lists are transparent; * matches one key." />
+                      <TextBlock Classes="muted small" TextWrapping="Wrap"
+                                 Text="Comma-separated tag paths that are not content. Takes effect on the next compare." />
+                    </StackPanel>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+            <Border Classes="divider" />
+            <Button Classes="icon" Content="⇕" Command="{Binding ExpandAllCommand}" ToolTip.Tip="Expand all" />
+            <Button Classes="icon" Content="⇳" Command="{Binding CollapseAllCommand}" ToolTip.Tip="Collapse all" />
+            <Button Content="Export ⌄" Command="{Binding ExportCommand}" CommandParameter="text" ToolTip.Tip="Export the compare as a report">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="Text report…" Command="{Binding ExportCommand}" CommandParameter="text" />
+                  <MenuItem Header="JSON report…" Command="{Binding ExportCommand}" CommandParameter="json" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+          </StackPanel>
 
-      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" />
-    </StackPanel>
+          <Border Classes="segmented" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+              <RadioButton GroupName="filter" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.All}"
+                           IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=All, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="All" />
+                  <TextBlock Classes="dim small mono" Text="{Binding Counts.Total, Converter={x:Static conv:Conv.Count}}" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="filter" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Differences}"
+                           IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Differences, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource State.Different}" />
+                  <TextBlock Text="Differences" Margin="0,0,6,0" />
+                  <TextBlock Classes="dim small mono" Text="{Binding DifferencesCount, Converter={x:Static conv:Conv.Count}}" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="filter" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.LeftOnly}"
+                           IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=LeftOnly, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource State.LeftOnly}" />
+                  <TextBlock Text="Left only" Margin="0,0,6,0" />
+                  <TextBlock Classes="dim small mono" Text="{Binding Counts.LeftOnly, Converter={x:Static conv:Conv.Count}}" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="filter" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.RightOnly}"
+                           IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=RightOnly, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource State.RightOnly}" />
+                  <TextBlock Text="Right only" Margin="0,0,6,0" />
+                  <TextBlock Classes="dim small mono" Text="{Binding Counts.RightOnly, Converter={x:Static conv:Conv.Count}}" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="filter" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Same}"
+                           IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Same, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource State.Same}" />
+                  <TextBlock Text="Same" Margin="0,0,6,0" />
+                  <TextBlock Classes="dim small mono" Text="{Binding Counts.Same, Converter={x:Static conv:Conv.Count}}" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="filter" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static vm:RowFilter.Errors}"
+                           IsChecked="{Binding Filter, Converter={StaticResource EnumEquals}, ConverterParameter=Errors, Mode=OneWay}"
+                           ToolTip.Tip="Files unreadable on either side">
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource State.Error}" />
+                  <TextBlock Text="Errors" Margin="0,0,6,0" />
+                  <TextBlock Classes="dim small mono" Text="{Binding Counts.Error, Converter={x:Static conv:Conv.Count}}" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+            </StackPanel>
+          </Border>
+        </DockPanel>
 
-    <!-- Status bar -->
-    <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,6">
-      <ProgressBar DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" Value="{Binding ProgressFraction}" IsVisible="{Binding IsScanning}" Margin="8,0,0,0" />
-      <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-    </DockPanel>
+        <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" />
+      </StackPanel>
+    </Border>
+
+    <!-- Status bar: counts as chips, then the labelled pass and progress -->
+    <Border DockPanel.Dock="Bottom" Classes="statusbar">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsScanning}">
+          <TextBlock Classes="muted" Text="{Binding PassText}" VerticalAlignment="Center" />
+          <ProgressBar Width="220" Minimum="0" Maximum="1" Value="{Binding ProgressFraction}" VerticalAlignment="Center" />
+          <TextBlock Classes="mono small" Text="{Binding ProgressFraction, StringFormat={}{0:P0}}" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding PassText}" VerticalAlignment="Center" IsVisible="{Binding !IsScanning}" />
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Counts.Different, Converter={x:Static conv:Conv.Positive}}">
+            <Border Classes="swatch" Background="{DynamicResource State.Different}" />
+            <TextBlock FontWeight="SemiBold" Text="{Binding Counts.Different, Converter={x:Static conv:Conv.Count}}" Margin="0,0,4,0" />
+            <TextBlock Text="differ" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Counts.ProbablyDifferent, Converter={x:Static conv:Conv.Positive}}">
+            <Border Classes="swatch" BorderBrush="{DynamicResource State.Different}" BorderThickness="1" />
+            <TextBlock FontWeight="SemiBold" Text="{Binding Counts.ProbablyDifferent, Converter={x:Static conv:Conv.Count}}" Margin="0,0,4,0" />
+            <TextBlock Text="probably differ" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Counts.LeftOnly, Converter={x:Static conv:Conv.Positive}}">
+            <Border Classes="swatch" Background="{DynamicResource State.LeftOnly}" />
+            <TextBlock FontWeight="SemiBold" Text="{Binding Counts.LeftOnly, Converter={x:Static conv:Conv.Count}}" Margin="0,0,4,0" />
+            <TextBlock Text="left only" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Counts.RightOnly, Converter={x:Static conv:Conv.Positive}}">
+            <Border Classes="swatch" Background="{DynamicResource State.RightOnly}" />
+            <TextBlock FontWeight="SemiBold" Text="{Binding Counts.RightOnly, Converter={x:Static conv:Conv.Count}}" Margin="0,0,4,0" />
+            <TextBlock Text="right only" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Counts.Error, Converter={x:Static conv:Conv.Positive}}">
+            <Border Classes="swatch" Background="{DynamicResource State.Error}" />
+            <TextBlock FontWeight="SemiBold" Text="{Binding Counts.Error, Converter={x:Static conv:Conv.Count}}" Margin="0,0,4,0" />
+            <TextBlock Text="unreadable" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Counts.Same, Converter={x:Static conv:Conv.Positive}}">
+            <TextBlock FontWeight="SemiBold" Text="{Binding Counts.Same, Converter={x:Static conv:Conv.Count}}" Margin="0,0,4,0" />
+            <TextBlock Text="same" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Counts.Pending, Converter={x:Static conv:Conv.Positive}}">
+            <TextBlock FontWeight="SemiBold" Text="{Binding Counts.Pending, Converter={x:Static conv:Conv.Count}}" Margin="0,0,4,0" />
+            <TextBlock Text="pending" />
+          </StackPanel>
+          <TextBlock Classes="muted" Text="{Binding StatusText}" IsVisible="{Binding !HasResult}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
 
     <!-- Both panes in one grid: identical row set, so scroll and expansion are inherently in sync -->
     <DataGrid x:Name="Grid"
@@ -115,35 +246,53 @@
               CanUserResizeColumns="True"
               SelectionMode="Single"
               HeadersVisibility="Column"
-              GridLinesVisibility="Vertical"
-              RowHeight="24"
-              Margin="8,0">
+              GridLinesVisibility="None"
+              RowHeight="27">
       <DataGrid.Columns>
 
         <DataGridTemplateColumn Header="Left" Width="3*" x:DataType="vm:CompareRowItem">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:CompareRowItem">
-              <Panel Margin="{Binding Depth, Converter={StaticResource DepthToMargin}}">
-                <StackPanel Orientation="Horizontal" IsVisible="{Binding HasLeft}">
+              <Panel>
+                <ctl:Hatch IsVisible="{Binding !HasLeft}" />
+                <StackPanel Orientation="Horizontal" IsVisible="{Binding HasLeft}" Margin="{Binding Depth, Converter={StaticResource DepthToMargin}}">
                   <Button Classes="expander" Content="{Binding ExpanderGlyph}"
                           Command="{Binding $parent[UserControl].((vm:FolderCompareViewModel)DataContext).ToggleCommand}"
                           CommandParameter="{Binding}" />
                   <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
                              TextDecorations="{Binding Status, Converter={StaticResource StatusDecoration}}" />
+                  <TextBlock Classes="muted small" Text="{Binding InlineCounts}" VerticalAlignment="Center" Margin="8,0,0,0" />
                 </StackPanel>
-                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasLeft}" Margin="20,0,0,0" />
               </Panel>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTextColumn Header="Size" Width="80" Binding="{Binding LeftSizeText}" x:DataType="vm:CompareRowItem" />
-        <DataGridTextColumn Header="Modified" Width="180" Binding="{Binding LeftModifiedText}" x:DataType="vm:CompareRowItem" />
-
-        <DataGridTemplateColumn Header="" Width="36" x:DataType="vm:CompareRowItem">
+        <DataGridTemplateColumn Header="Size" Width="80" x:DataType="vm:CompareRowItem">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:CompareRowItem">
-              <TextBlock Text="{Binding StatusGlyph}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"
-                         Opacity="{Binding Status, Converter={StaticResource StatusOpacity}}" />
+              <Panel>
+                <ctl:Hatch IsVisible="{Binding !HasLeft}" />
+                <TextBlock Classes="mono small num" Text="{Binding LeftSizeText}" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Modified" Width="150" x:DataType="vm:CompareRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:CompareRowItem">
+              <Panel>
+                <ctl:Hatch IsVisible="{Binding !HasLeft}" />
+                <TextBlock Classes="mono small date" Classes.older="{Binding RightIsNewer}" Text="{Binding LeftModifiedText}" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTemplateColumn Header="" Width="44" x:DataType="vm:CompareRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:CompareRowItem">
+              <ctl:StateChip State="{Binding State}" Glyph="{Binding StatusGlyph}" Rollup="{Binding IsRollup}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
@@ -151,21 +300,39 @@
         <DataGridTemplateColumn Header="Right" Width="3*" x:DataType="vm:CompareRowItem">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:CompareRowItem">
-              <Panel Margin="{Binding Depth, Converter={StaticResource DepthToMargin}}">
-                <StackPanel Orientation="Horizontal" IsVisible="{Binding HasRight}">
+              <Panel>
+                <ctl:Hatch IsVisible="{Binding !HasRight}" />
+                <StackPanel Orientation="Horizontal" IsVisible="{Binding HasRight}" Margin="{Binding Depth, Converter={StaticResource DepthToMargin}}">
                   <Button Classes="expander" Content="{Binding ExpanderGlyph}"
                           Command="{Binding $parent[UserControl].((vm:FolderCompareViewModel)DataContext).ToggleCommand}"
                           CommandParameter="{Binding}" />
                   <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
                              TextDecorations="{Binding Status, Converter={StaticResource StatusDecoration}}" />
                 </StackPanel>
-                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasRight}" Margin="20,0,0,0" />
               </Panel>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTextColumn Header="Size" Width="80" Binding="{Binding RightSizeText}" x:DataType="vm:CompareRowItem" />
-        <DataGridTextColumn Header="Modified" Width="180" Binding="{Binding RightModifiedText}" x:DataType="vm:CompareRowItem" />
+        <DataGridTemplateColumn Header="Size" Width="80" x:DataType="vm:CompareRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:CompareRowItem">
+              <Panel>
+                <ctl:Hatch IsVisible="{Binding !HasRight}" />
+                <TextBlock Classes="mono small num" Text="{Binding RightSizeText}" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="Modified" Width="150" x:DataType="vm:CompareRowItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:CompareRowItem">
+              <Panel>
+                <ctl:Hatch IsVisible="{Binding !HasRight}" />
+                <TextBlock Classes="mono small date" Classes.older="{Binding LeftIsNewer}" Text="{Binding RightModifiedText}" />
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
 
       </DataGrid.Columns>
     </DataGrid>

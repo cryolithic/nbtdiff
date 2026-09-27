@@ -9,5 +9,8 @@
     <!-- Symbols inside the assemblies, so a published folder is just the executable. -->
     <DebugType>embedded</DebugType>
     <Product>nbt-diff</Product>
+    <!-- Release builds override this from the v* tag (CI passes -p:Version). -->
+    <Version>0.8.0</Version>
+    <Copyright>Copyright (c) 2026 cryolithic</Copyright>
   </PropertyGroup>
 </Project>

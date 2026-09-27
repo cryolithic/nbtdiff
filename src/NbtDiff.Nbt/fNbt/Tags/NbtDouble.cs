@@ -64,17 +64,8 @@ namespace fNbt {
 
 
         internal override bool ReadTag(NbtBinaryReader readStream) {
-            if (readStream.Selector != null && !readStream.Selector(this)) {
-                readStream.ReadDouble();
-                return false;
-            }
             _Value = readStream.ReadDouble();
             return true;
-        }
-
-
-        internal override void SkipTag(NbtBinaryReader readStream) {
-            readStream.ReadDouble();
         }
 
 

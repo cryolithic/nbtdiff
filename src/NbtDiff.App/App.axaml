@@ -4,9 +4,17 @@
              xmlns:views="using:NbtDiff.App.Views"
              x:Class="NbtDiff.App.App"
              RequestedThemeVariant="Default">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://nbtdiff/Themes/State.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <StyleInclude Source="avares://nbtdiff/Themes/Controls.axaml" />
   </Application.Styles>
   <Application.DataTemplates>
     <DataTemplate DataType="vm:FolderCompareViewModel">

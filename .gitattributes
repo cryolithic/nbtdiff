@@ -6,3 +6,5 @@
 *.mcc binary
 *.dat binary
 *.nbt binary
+# Real-world fixtures: keep the bytes exactly as Minecraft (then the scrub tool) wrote them.
+tests/data/** -text

@@ -111,6 +111,78 @@ public class NbtDocumentTests
         Assert.Throws<ArgumentException>(() => NbtDocument.Load(stream, "x"));
     }
 
+    public static TheoryData<NbtCompression> SavableCompressions => new()
+    {
+        NbtCompression.GZip,
+        NbtCompression.ZLib,
+        NbtCompression.None,
+    };
+
+    [Theory]
+    [MemberData(nameof(SavableCompressions))]
+    public void Save_RoundTripsJavaNbt_KeepingCompression(NbtCompression compression)
+    {
+        using var dir = new TempDir();
+        var sample = NbtFixtures.SampleCompound(seed: 5);
+        var path = dir.File("thing.dat");
+        NbtFixtures.WriteFile(path, sample, NbtFormat.JavaNbt, compression);
+
+        var doc = NbtAssert.Ok(NbtDocument.Load(path));
+        doc.Root.Add(new NbtInt("Added", 42));
+        NbtAssert.Ok(doc.Save(doc.Root));
+
+        var reloaded = NbtAssert.Ok(NbtDocument.Load(path));
+        Assert.Equal(NbtFormat.JavaNbt, reloaded.Format.Format);
+        Assert.Equal(compression, reloaded.Format.Compression);
+        NbtAssert.Equal(doc.Root, reloaded.Root);
+    }
+
+    [Fact]
+    public void Save_RoundTripsSnbt()
+    {
+        using var dir = new TempDir();
+        var sample = NbtFixtures.SampleCompound(seed: 7);
+        var path = dir.File("thing.snbt");
+        NbtFixtures.WriteFile(path, sample, NbtFormat.Snbt);
+
+        var doc = NbtAssert.Ok(NbtDocument.Load(path));
+        doc.Root.Add(new NbtInt("Added", 42));
+        NbtAssert.Ok(doc.Save(doc.Root));
+
+        var reloaded = NbtAssert.Ok(NbtDocument.Load(path));
+        Assert.Equal(NbtFormat.Snbt, reloaded.Format.Format);
+        NbtAssert.Equal(doc.Root, reloaded.Root);
+    }
+
+    [Fact]
+    public void Save_KeepsTheFirstBackup()
+    {
+        using var dir = new TempDir();
+        var path = dir.File("thing.dat");
+        NbtFixtures.WriteFile(path, NbtFixtures.SampleCompound(seed: 9), NbtFormat.JavaNbt);
+        byte[] pristine = File.ReadAllBytes(path);
+
+        var doc = NbtAssert.Ok(NbtDocument.Load(path));
+        doc.Root.Add(new NbtInt("First", 1));
+        NbtAssert.Ok(doc.Save(doc.Root));
+        doc.Root.Add(new NbtInt("Second", 2));
+        NbtAssert.Ok(doc.Save(doc.Root));
+
+        Assert.Equal(pristine, File.ReadAllBytes(path + ".bak")); // the second save must not overwrite it
+    }
+
+    [Fact]
+    public void Save_BedrockFormat_Refused()
+    {
+        using var dir = new TempDir();
+        var path = dir.File("level.dat");
+        NbtFixtures.WriteFile(path, NbtFixtures.SampleCompound(seed: 11), NbtFormat.BedrockLevelDat);
+
+        var doc = NbtAssert.Ok(NbtDocument.Load(path));
+        var failure = NbtAssert.Failed(doc.Save(doc.Root));
+        Assert.Contains("not supported", failure.Description);
+    }
+
     private sealed class NonSeekable(Stream inner) : Stream
     {
         public override bool CanRead => true;

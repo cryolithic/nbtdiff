@@ -68,10 +68,13 @@ public class FolderCompareViewModelTests
             vm.Filter = RowFilter.Differences;
             Assert.Equal("data data/only-left.dat data/only-right.dat region region/r.0.0.mca", Names(vm));
 
-            vm.Filter = RowFilter.Orphans;
-            Assert.Equal("data data/only-left.dat data/only-right.dat", Names(vm));
+            vm.Filter = RowFilter.LeftOnly;
+            Assert.Equal("data data/only-left.dat", Names(vm));
             Assert.Equal(RowStatus.LeftOnly, vm.Tree.Rows.Single(i => i.Name == "only-left.dat").Status);
             Assert.False(vm.Tree.Rows.Single(i => i.Name == "only-left.dat").HasRight);
+
+            vm.Filter = RowFilter.RightOnly;
+            Assert.Equal("data data/only-right.dat", Names(vm));
 
             vm.Filter = RowFilter.Same;
             Assert.Equal("region region/r.1.0.mca level.dat", Names(vm));
@@ -177,21 +180,38 @@ public class FolderCompareViewModelTests
         vm.CompareCommand.Execute(null);
         Assert.False(vm.IsScanning);
         Assert.True(vm.HasError);
-        Assert.Contains("Left folder does not exist", vm.ErrorMessage);
+        Assert.Contains("Left path does not exist", vm.ErrorMessage);
         Assert.Null(vm.ScanCompletion);
     }
 
     [Fact]
-    public async Task Browse_SetsPath_WhenNotCancelled()
+    public async Task Browse_FolderAndFilePickers_SetTheirSides()
     {
-        var dialogs = new FakeDialogService { NextFolder = @"C:\worlds\x" };
+        var dialogs = new FakeDialogService { NextFolder = @"C:\worlds\x", NextOpenFile = @"/srv/worlds/level.dat" };
         var vm = new FolderCompareViewModel(dialogs, new ImmediateUiDispatcher());
-        await vm.BrowseLeftCommand.ExecuteAsync(null);
+
+        await vm.BrowseLeftFolderCommand.ExecuteAsync(null);
         Assert.Equal(@"C:\worlds\x", vm.LeftPath);
-        dialogs.NextFolder = null;
-        await vm.BrowseRightCommand.ExecuteAsync(null);
-        Assert.Equal("", vm.RightPath);
-        Assert.Equal(["folder:Left folder", "folder:Right folder"], dialogs.Requests);
+
+        await vm.BrowseRightFileCommand.ExecuteAsync(null);
+        Assert.Equal(@"/srv/worlds/level.dat", vm.RightPath);
+
+        Assert.Equal(["folder:Left folder", "file:Right file"], dialogs.Requests);
+    }
+
+    [Fact]
+    public async Task Browse_Cancelled_LeavesPathsAlone()
+    {
+        var dialogs = new FakeDialogService { NextFolder = null, NextOpenFile = null };
+        var vm = new FolderCompareViewModel(dialogs, new ImmediateUiDispatcher()) { LeftPath = "keep/left", RightPath = "keep/right" };
+
+        await vm.BrowseLeftFolderCommand.ExecuteAsync(null);
+        await vm.BrowseLeftFileCommand.ExecuteAsync(null);
+        await vm.BrowseRightFolderCommand.ExecuteAsync(null);
+        await vm.BrowseRightFileCommand.ExecuteAsync(null);
+
+        Assert.Equal("keep/left", vm.LeftPath);
+        Assert.Equal("keep/right", vm.RightPath);
     }
 
     [Fact]
@@ -268,5 +288,82 @@ public class FolderCompareViewModelTests
         }
 
         public ValueTask<LoadResult<FileFingerprint>> DeepAsync(string path, FileKind kind, CancellationToken ct = default) => _inner.DeepAsync(path, kind, ct);
+    }
+    [Fact]
+    public async Task FolderRows_TintOnlyWhileCollapsed_WithInlineCountsAndARollupDot()
+    {
+        var (l, r) = Pair(Base(), Base().Mutate(m => m.Chunk(0, 0, 3, 0).SetPath("InhabitedTime", 999L)));
+        using (l) using (r)
+        {
+            var (vm, _, _) = await Scanned(l.Path, r.Path);
+            var region = vm.Tree.Rows.Single(i => i.RelativePath == "region");
+            var file = vm.Tree.Rows.Single(i => i.RelativePath == "region/r.0.0.mca");
+            var same = vm.Tree.Rows.Single(i => i.RelativePath == "region/r.1.0.mca");
+
+            Assert.True(region.IsExpanded);
+            Assert.Equal(RowTint.None, region.Tint);          // expanded: its changed child carries the colour
+            Assert.True(region.IsRollup);
+            Assert.Equal("1 differ", region.InlineCounts);    // "same" is left out of the inline counts
+            Assert.Equal(new RowTint(StateKind.Different), file.Tint);
+            Assert.False(file.IsRollup);
+            Assert.Null(file.InlineCounts);
+            Assert.Equal(RowTint.None, same.Tint);
+
+            vm.ToggleCommand.Execute(region);                 // collapse
+            Assert.Equal(new RowTint(StateKind.Different), region.Tint);
+            Assert.False(region.IsRollup);
+
+            Assert.Equal(1, vm.Counts.Different);
+            Assert.Equal(1, vm.DifferencesCount);
+            Assert.Equal(2, vm.Counts.Same);
+        }
+    }
+
+    [Fact]
+    public async Task NewerModifiedTime_IsTheOneNotDimmed()
+    {
+        var (l, r) = Pair(Base(), Base().Mutate(m => m.Chunk(0, 0, 3, 0).SetPath("InhabitedTime", 999L)));
+        using (l) using (r)
+        {
+            var region = Path.Combine("region", "r.0.0.mca");
+            File.SetLastWriteTimeUtc(Path.Combine(l.Path, region), new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc));
+            File.SetLastWriteTimeUtc(Path.Combine(r.Path, region), new DateTime(2026, 9, 2, 0, 0, 0, DateTimeKind.Utc));
+            var (vm, _, _) = await Scanned(l.Path, r.Path);
+            var file = vm.Tree.Rows.Single(i => i.RelativePath == "region/r.0.0.mca");
+            Assert.True(file.RightIsNewer);
+            Assert.False(file.LeftIsNewer);
+            Assert.False(vm.Tree.Rows.Single(i => i.RelativePath == "region").RightIsNewer);   // folders: no dates
+        }
+    }
+
+    [Fact]
+    public async Task Swap_ExchangesThePaths_AndRerunsAFinishedCompare()
+    {
+        var (l, r) = Pair(Base().WithFile("data/only-left.dat", NbtFixtures.SampleCompound(1)), Base());
+        using (l) using (r)
+        {
+            var (vm, _, _) = await Scanned(l.Path, r.Path);
+            Assert.Equal(1, vm.Counts.LeftOnly);
+            vm.SwapCommand.Execute(null);
+            Assert.Equal(r.Path, vm.LeftPath);
+            Assert.Equal(l.Path, vm.RightPath);
+            await vm.ScanCompletion!.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Equal(0, vm.Counts.LeftOnly);
+            Assert.Equal(1, vm.Counts.RightOnly);
+        }
+    }
+
+    [Fact]
+    public void OptionsSummary_FollowsTheSettings()
+    {
+        var vm = new FolderCompareViewModel(new FakeDialogService(), new ImmediateUiDispatcher());
+        Assert.Equal("Deep verify · keyed lists · 2 ignored tags", vm.OptionsSummary);
+        var changed = new List<string>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
+        vm.DeepVerify = false;
+        vm.UseKeyedAligner = false;
+        vm.IgnoredTagsText = "";
+        Assert.Equal("Quick scan · no ignored tags", vm.OptionsSummary);
+        Assert.Equal(3, changed.Count(n => n == nameof(FolderCompareViewModel.OptionsSummary)));
     }
 }

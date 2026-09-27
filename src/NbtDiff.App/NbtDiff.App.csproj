@@ -8,7 +8,13 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- Skia/HarfBuzz ship 100 MB of native .pdb files; keep them out of build and publish output. -->
     <CopyDebugSymbolFilesFromPackages>false</CopyDebugSymbolFilesFromPackages>
+    <!-- Explorer/taskbar icon; regenerate the Assets icons with tools/icon/make_icon.py. -->
+    <ApplicationIcon>Assets\nbtdiff.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\nbtdiff-256.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
@@ -26,6 +32,14 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="NbtDiff.App.Tests" />
+  </ItemGroup>
+
+  <!-- License and third-party notices travel with every published binary (BSD-3 and OFL require it). -->
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Link="LICENSE.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\third_party\NOTICE" Link="THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\third_party\dotnet-THIRD-PARTY-NOTICES.txt" Link="dotnet-THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\third_party\CommunityToolkit.Mvvm-ThirdPartyNotices.txt" Link="CommunityToolkit.Mvvm-ThirdPartyNotices.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <!-- The native Skia/HarfBuzz packages ship .pdb files as native assets, which

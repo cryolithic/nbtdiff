@@ -1,0 +1,15 @@
+{
+  "minecraft:adventure/adventuring_time": {
+    "criteria": {
+      "minecraft:dappled_forest": "2026-09-26 22:13:31 -0700"
+    },
+    "done": false
+  },
+  "minecraft:recipes/decorations/crafting_table": {
+    "criteria": {
+      "unlock_right_away": "2026-09-26 22:13:30 -0700"
+    },
+    "done": true
+  },
+  "DataVersion": 5023
+}

@@ -15,11 +15,13 @@ namespace NbtDiff.Nbt.Snbt;
 public sealed partial class SnbtParser
 {
     private readonly string _text;
+    private readonly SnbtSourceMap? _map;
     private int _pos;
 
-    private SnbtParser(string text)
+    private SnbtParser(string text, SnbtSourceMap? map = null)
     {
         _text = text;
+        _map = map;
     }
 
     /// <summary>Parses a complete SNBT value; trailing content other than whitespace is an error.</summary>
@@ -28,7 +30,19 @@ public sealed partial class SnbtParser
     {
         var parser = new SnbtParser(text);
         parser.SkipWhitespace();
-        var tag = parser.ParseValue(name: null);
+        var tag = parser.ParseValue(name: null, entryStart: parser._pos);
+        parser.SkipWhitespace();
+        if (parser._pos != text.Length)
+            parser.Fail("Unexpected trailing content");
+        return tag;
+    }
+
+    /// <summary>Parses like <see cref="Parse(string)"/> and records where every value sits in <paramref name="text"/>.</summary>
+    internal static NbtTag Parse(string text, SnbtSourceMap map)
+    {
+        var parser = new SnbtParser(text, map);
+        parser.SkipWhitespace();
+        var tag = parser.ParseValue(name: null, entryStart: parser._pos);
         parser.SkipWhitespace();
         if (parser._pos != text.Length)
             parser.Fail("Unexpected trailing content");
@@ -51,16 +65,20 @@ public sealed partial class SnbtParser
         }
     }
 
-    private NbtTag ParseValue(string? name)
+    /// <param name="entryStart">Where the whole entry begins: the key of a compound entry, else the value itself.</param>
+    private NbtTag ParseValue(string? name, int entryStart)
     {
         if (AtEnd) Fail("Unexpected end of input, expected a value");
-        return Peek switch
+        int start = _pos;
+        NbtTag tag = Peek switch
         {
             '{' => ParseCompound(name),
             '[' => ParseListOrArray(name),
             '"' or '\'' => new NbtString(name, ParseQuotedString()),
             _ => ParseScalar(name),
         };
+        _map?.Record(tag, new SnbtSpan(entryStart, start, _pos));
+        return tag;
     }
 
     private NbtCompound ParseCompound(string? name)
@@ -73,11 +91,14 @@ public sealed partial class SnbtParser
         while (true)
         {
             SkipWhitespace();
+            int entryStart = _pos;
             string key = ParseKey();
+            int keyEnd = _pos;
             SkipWhitespace();
             Expect(':');
             SkipWhitespace();
-            var child = ParseValue(key);
+            _map?.RecordColon(_text[keyEnd.._pos]);
+            var child = ParseValue(key, entryStart);
             if (compound.Contains(key)) Fail($"Duplicate key '{key}'");
             compound.Add(child);
             if (ClosedAfterSeparator('}')) return compound;
@@ -115,7 +136,7 @@ public sealed partial class SnbtParser
         {
             SkipWhitespace();
             int itemStart = _pos;
-            var item = ParseValue(name: null);
+            var item = ParseValue(name: null, itemStart);
             if (list.Count > 0 && item.TagType != list.ListType)
                 Fail($"List of {list.ListType} cannot contain a {item.TagType}", itemStart);
             list.Add(item);
@@ -133,7 +154,7 @@ public sealed partial class SnbtParser
             {
                 SkipWhitespace();
                 int itemStart = _pos;
-                var item = ParseValue(name: null);
+                var item = ParseValue(name: null, itemStart);
                 long v = item switch
                 {
                     NbtByte b => (sbyte)b.Value,   // fNbt stores bytes unsigned; SNBT bytes are signed
@@ -250,7 +271,8 @@ public sealed partial class SnbtParser
         return _text[start.._pos];
     }
 
-    internal static bool IsUnquotedChar(char c) =>
+    /// <summary>True for characters allowed in an unquoted SNBT string or key.</summary>
+    public static bool IsUnquotedChar(char c) =>
         c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '_' or '-' or '.' or '+';
 
     private bool AtEnd => _pos >= _text.Length;
@@ -323,10 +345,12 @@ public sealed partial class SnbtParser
         if (TryConsume(close)) return true;
         if (TryConsume(','))
         {
-            SkipWhitespace();
+            bool lineBreak = SkipWhitespace();
+            _map?.RecordSeparator(comma: true, lineBreak);
             return TryConsume(close);
         }
         if (!newline) Fail($"Expected ',' or '{close}'");
+        _map?.RecordSeparator(comma: false, lineBreak: true);
         return false;
     }
 

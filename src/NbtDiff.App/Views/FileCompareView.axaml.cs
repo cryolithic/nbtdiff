@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using NbtDiff.App.ViewModels;
 
@@ -12,10 +14,17 @@ public partial class FileCompareView : UserControl
     {
         InitializeComponent();
         Grid.DoubleTapped += OnGridDoubleTapped;
-        Grid.KeyDown += OnGridKeyDown;
+        // Tunnel: DataGrid handles Enter/Left/Right itself (row and column moves) before a bubbling
+        // handler would see them.
+        Grid.AddHandler(KeyDownEvent, OnGridKeyDown, RoutingStrategies.Tunnel);
         Grid.SelectionChanged += OnGridSelectionChanged;
         // F7/F8 key bindings only fire while focus is inside this view.
         Loaded += (_, _) => Grid.Focus();
+        CopyPath.Click += async (_, _) =>
+        {
+            if (Vm?.SelectedItem is { } item && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                await clipboard.SetTextAsync(item.NbtPath);
+        };
     }
 
     private FileCompareViewModel? Vm => DataContext as FileCompareViewModel;
@@ -29,7 +38,8 @@ public partial class FileCompareView : UserControl
 
     private void OnGridKeyDown(object? sender, KeyEventArgs e)
     {
-        if (Vm is not { } vm) return;
+        // Modified keys belong to the view's KeyBindings (Alt+Left/Right copy).
+        if (Vm is not { } vm || e.KeyModifiers != KeyModifiers.None) return;
         switch (e.Key)
         {
             case Key.Enter:

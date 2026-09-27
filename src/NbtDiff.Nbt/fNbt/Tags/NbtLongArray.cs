@@ -108,10 +108,6 @@ namespace fNbt {
                 throw new NbtFormatException("Negative length given in TAG_Long_Array");
             }
 
-            if (readStream.Selector != null && !readStream.Selector(this)) {
-                readStream.Skip(length*sizeof(long));
-                return false;
-            }
 
             longs = new long[length];
 
@@ -120,17 +116,6 @@ namespace fNbt {
             }
 
             return true;
-        }
-
-
-        internal override void SkipTag(NbtBinaryReader readStream) {
-            int length = readStream.ReadInt32();
-
-            if (length < 0) {
-                throw new NbtFormatException("Negative length given in TAG_Long_Array");
-            }
-
-            readStream.Skip(length*sizeof(long));
         }
 
 

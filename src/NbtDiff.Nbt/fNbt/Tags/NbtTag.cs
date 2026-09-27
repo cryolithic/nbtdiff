@@ -98,7 +98,6 @@ namespace fNbt {
 
         internal abstract bool ReadTag([NotNull] NbtBinaryReader readStream);
 
-        internal abstract void SkipTag([NotNull] NbtBinaryReader readStream);
 
         internal abstract void WriteTag([NotNull] NbtBinaryWriter writeReader);
 

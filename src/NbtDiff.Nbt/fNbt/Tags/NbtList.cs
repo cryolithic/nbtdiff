@@ -238,11 +238,6 @@ namespace fNbt {
         #region Reading / Writing
 
         internal override bool ReadTag(NbtBinaryReader readStream) {
-            if (readStream.Selector != null && !readStream.Selector(this)) {
-                SkipTag(readStream);
-                return false;
-            }
-
             ListType = readStream.ReadTagType();
 
             int length = readStream.ReadInt32();
@@ -299,59 +294,6 @@ namespace fNbt {
                 }
             }
             return true;
-        }
-
-
-        internal override void SkipTag(NbtBinaryReader readStream) {
-            // read list type, and make sure it's defined
-            ListType = readStream.ReadTagType();
-
-            int length = readStream.ReadInt32();
-            if (length < 0) {
-                throw new NbtFormatException("Negative list size given.");
-            }
-
-            switch (ListType) {
-                case NbtTagType.Byte:
-                    readStream.Skip(length);
-                    break;
-                case NbtTagType.Short:
-                    readStream.Skip(length*sizeof(short));
-                    break;
-                case NbtTagType.Int:
-                    readStream.Skip(length*sizeof(int));
-                    break;
-                case NbtTagType.Long:
-                    readStream.Skip(length*sizeof(long));
-                    break;
-                case NbtTagType.Float:
-                    readStream.Skip(length*sizeof(float));
-                    break;
-                case NbtTagType.Double:
-                    readStream.Skip(length*sizeof(double));
-                    break;
-                default:
-                    for (int i = 0; i < length; i++) {
-                        switch (listType) {
-                            case NbtTagType.ByteArray:
-                                new NbtByteArray().SkipTag(readStream);
-                                break;
-                            case NbtTagType.String:
-                                readStream.SkipString();
-                                break;
-                            case NbtTagType.List:
-                                new NbtList().SkipTag(readStream);
-                                break;
-                            case NbtTagType.Compound:
-                                new NbtCompound().SkipTag(readStream);
-                                break;
-                            case NbtTagType.IntArray:
-                                new NbtIntArray().SkipTag(readStream);
-                                break;
-                        }
-                    }
-                    break;
-            }
         }
 
 

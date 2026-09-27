@@ -9,3 +9,19 @@ TestResults/
 *.DotSettings.user
 *.swp
 .claude/worktrees/
+
+# coverage output
+coverage*
+*.dcvr
+
+# Claude Code notes, design notes and build plan: local only
+CLAUDE.md
+docs/DESIGN.md
+docs/PLAN.md
+
+# raw, unscrubbed inputs kept in the working copy: never commit (identity + paths)
+/Vanilla Initial/
+/Vanilla Expected/
+/NeoForge Initial/
+/NeoForge Expected/
+/Screenshot_*.png

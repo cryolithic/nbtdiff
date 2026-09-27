@@ -1,0 +1,145 @@
+<!-- Shared control styles for the refreshed UI (#9): neutral primary button, bars, muted and error
+     text, tabular numbers, segmented filters, chips. Colours come from Themes/State.axaml. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{DynamicResource App.Background}" />
+  </Style>
+  <Style Selector="DataGrid">
+    <Setter Property="Background" Value="{DynamicResource App.Background}" />
+  </Style>
+
+  <!-- Neutral primary action: blue/purple/red only ever mean state. -->
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{DynamicResource App.Primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.PrimaryText}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource App.Primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.PrimaryText}" />
+    <Setter Property="Opacity" Value="0.9" />
+  </Style>
+  <Style Selector="Button.primary:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+
+  <!-- A breadcrumb link: text only, underlined on hover. -->
+  <Style Selector="Button.crumb">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="2,2" />
+    <Setter Property="Foreground" Value="{DynamicResource App.TextMuted}" />
+  </Style>
+  <Style Selector="Button.crumb:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+  </Style>
+
+  <Style Selector="Button.icon">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Border.bar">
+    <Setter Property="Background" Value="{DynamicResource App.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.Divider}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="10,6" />
+  </Style>
+  <Style Selector="Border.statusbar">
+    <Setter Property="Background" Value="{DynamicResource App.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.Divider}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="Border.divider">
+    <Setter Property="Width" Value="1" />
+    <Setter Property="Margin" Value="4,4" />
+    <Setter Property="Background" Value="{DynamicResource App.Divider}" />
+  </Style>
+  <Style Selector="Border.panel">
+    <Setter Property="Background" Value="{DynamicResource App.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.Divider}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource App.TextMuted}" />
+  </Style>
+  <Style Selector="TextBlock.dim">
+    <Setter Property="Foreground" Value="{DynamicResource App.TextDim}" />
+  </Style>
+  <Style Selector="TextBlock.small">
+    <Setter Property="FontSize" Value="11.5" />
+  </Style>
+  <Style Selector="TextBlock.error">
+    <Setter Property="Foreground" Value="{DynamicResource State.Error}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="JetBrains Mono, Cascadia Mono, Consolas, DejaVu Sans Mono, monospace" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+
+  <!-- A small count/delta badge, e.g. "+400" or "Differences 318". -->
+  <Style Selector="Border.badge">
+    <Setter Property="Background" Value="{DynamicResource App.Control}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.ControlBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- Segmented filter group: toggle buttons sitting in one rounded strip. -->
+  <Style Selector="Border.segmented">
+    <Setter Property="Background" Value="{DynamicResource App.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.ControlBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="3" />
+  </Style>
+  <!-- Radio buttons in a segmented strip look like toggle segments (RadioButton derives from ToggleButton). -->
+  <Style Selector="Border.segmented RadioButton">
+    <Setter Property="Theme" Value="{StaticResource {x:Type ToggleButton}}" />
+  </Style>
+  <Style Selector="Border.segmented ToggleButton, Border.segmented RadioButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="Border.segmented ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter, Border.segmented RadioButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource App.ControlBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+  </Style>
+  <Style Selector="Border.segmented ToggleButton:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter, Border.segmented RadioButton:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource App.ControlBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+  </Style>
+
+  <!-- Legend / filter chips whose swatch is a state colour. -->
+  <Style Selector="ToggleButton.legend">
+    <Setter Property="Background" Value="{DynamicResource App.Control}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.ControlBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="ToggleButton.legend:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.legend:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource App.Control}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.ControlBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+  </Style>
+  <Style Selector="ToggleButton.legend:unchecked">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+</Styles>

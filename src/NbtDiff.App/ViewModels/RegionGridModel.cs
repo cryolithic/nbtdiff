@@ -9,11 +9,16 @@ public sealed partial class ChunkCellItem(int x, int z) : ObservableObject
     public int X => x;
     public int Z => z;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsPresent), nameof(ToolTipText))] private ChunkDiffStatus? _status;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsPresent), nameof(ToolTipText), nameof(State))] private ChunkDiffStatus? _status;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(ToolTipText))] private string? _error;
     [ObservableProperty] private bool _isSelected;
+    /// <summary>Its state is toggled off in the legend (#11): drawn faint, skipped by keyboard navigation.</summary>
+    [ObservableProperty] private bool _isDimmed;
 
     public bool IsPresent => Status is not null;
+    public StateKind State => Status is { } s ? StateKinds.Of(s) : StateKind.Empty;
+    /// <summary>Present and not the same on both sides.</summary>
+    public bool IsChanged => Status is not null and not ChunkDiffStatus.Same;
 
     public string ToolTipText => Status switch
     {
@@ -54,6 +59,61 @@ public sealed partial class RegionGridModel : ObservableObject
     public int RightOnly { get; private set; }
     public int Errors { get; private set; }
 
+    // Legend filters (#11): a state toggled off dims its cells without moving anything.
+    [ObservableProperty] private bool _showSame = true;
+    [ObservableProperty] private bool _showDifferent = true;
+    [ObservableProperty] private bool _showLeftOnly = true;
+    [ObservableProperty] private bool _showRightOnly = true;
+    [ObservableProperty] private bool _showErrors = true;
+
+    partial void OnShowSameChanged(bool value) => ApplyFilter();
+    partial void OnShowDifferentChanged(bool value) => ApplyFilter();
+    partial void OnShowLeftOnlyChanged(bool value) => ApplyFilter();
+    partial void OnShowRightOnlyChanged(bool value) => ApplyFilter();
+    partial void OnShowErrorsChanged(bool value) => ApplyFilter();
+
+    private bool IsShown(ChunkDiffStatus status) => status switch
+    {
+        ChunkDiffStatus.Same => ShowSame,
+        ChunkDiffStatus.Different => ShowDifferent,
+        ChunkDiffStatus.LeftOnly => ShowLeftOnly,
+        ChunkDiffStatus.RightOnly => ShowRightOnly,
+        ChunkDiffStatus.Error => ShowErrors,
+        _ => true,
+    };
+
+    private void ApplyFilter()
+    {
+        foreach (var c in _cells) c.IsDimmed = c.Status is { } s && !IsShown(s);
+    }
+
+    private void RaiseCounts()
+    {
+        OnPropertyChanged(nameof(Present));
+        OnPropertyChanged(nameof(Same));
+        OnPropertyChanged(nameof(Different));
+        OnPropertyChanged(nameof(LeftOnly));
+        OnPropertyChanged(nameof(RightOnly));
+        OnPropertyChanged(nameof(Errors));
+        OnPropertyChanged(nameof(CountsText));
+        ApplyFilter();
+    }
+
+    /// <summary>Selects the next (or previous) changed chunk in (z, x) order after the selection, skipping dimmed cells. False at the end.</summary>
+    public bool StepChanged(int direction)
+    {
+        int from = Selected is null ? (direction > 0 ? -1 : _cells.Length) : Index(Selected.X, Selected.Z);
+        for (int i = from + direction; i >= 0 && i < _cells.Length; i += direction)
+        {
+            if (_cells[i].IsChanged && !_cells[i].IsDimmed)
+            {
+                Selected = _cells[i];
+                return true;
+            }
+        }
+        return false;
+    }
+
     public RegionGridModel()
     {
         for (int z = 0; z < Size; z++)
@@ -87,12 +147,27 @@ public sealed partial class RegionGridModel : ObservableObject
                 case ChunkDiffStatus.Error: Errors++; break;
             }
         }
-        OnPropertyChanged(nameof(CountsText));
+        RaiseCounts();
         var first = _cells.FirstOrDefault(c => c.Status is not null and not ChunkDiffStatus.Same) ?? _cells.FirstOrDefault(c => c.IsPresent);
         Selected = first;
     }
 
     public void Clear() => Apply([]);
+
+    /// <summary>Replaces one cell's status (null: no chunk on either side any more) and recounts; the selection stays.</summary>
+    public void Update(int x, int z, ChunkDiffCell? cell)
+    {
+        var item = this[x, z];
+        item.Status = cell?.Status;
+        item.Error = cell?.Error;
+        Present = _cells.Count(c => c.Status is not null);
+        Same = _cells.Count(c => c.Status == ChunkDiffStatus.Same);
+        Different = _cells.Count(c => c.Status == ChunkDiffStatus.Different);
+        LeftOnly = _cells.Count(c => c.Status == ChunkDiffStatus.LeftOnly);
+        RightOnly = _cells.Count(c => c.Status == ChunkDiffStatus.RightOnly);
+        Errors = _cells.Count(c => c.Status == ChunkDiffStatus.Error);
+        RaiseCounts();
+    }
 
     public void Select(int x, int z) => Selected = this[x, z];
 
@@ -102,8 +177,16 @@ public sealed partial class RegionGridModel : ObservableObject
         int x = Selected?.X ?? 0, z = Selected?.Z ?? 0;
         if (Selected is not null)
         {
-            x = Math.Clamp(x + dx, 0, Size - 1);
-            z = Math.Clamp(z + dz, 0, Size - 1);
+            // Step over cells whose state is toggled off; stay put if only dimmed cells lie ahead.
+            int nx = x, nz = z;
+            do
+            {
+                nx += dx;
+                nz += dz;
+                if (nx is < 0 or >= Size || nz is < 0 or >= Size) { nx = x; nz = z; break; }
+            } while (this[nx, nz].IsDimmed);
+            x = nx;
+            z = nz;
         }
         var target = this[x, z];
         if (ReferenceEquals(target, Selected)) return false;

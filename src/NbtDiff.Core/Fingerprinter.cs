@@ -50,6 +50,12 @@ public sealed class Fingerprinter(bool compoundOrderMatters = false, TagIgnoreSe
                 case FileKind.Snbt:
                 {
                     var doc = NbtDocument.Load(path);
+                    if (!doc.Ok && kind == FileKind.Snbt)
+                    {
+                        // Not SNBT after all (FTB leaves comment-only .snbt files behind): compare as text.
+                        var (textSize, textHash) = await HashFileAsync(path, stripCarriageReturns: true, ct).ConfigureAwait(false);
+                        return LoadResult<FileFingerprint>.Success(new FileFingerprint(kind, FingerprintTier.Deep, textSize, textHash));
+                    }
                     if (!doc.Ok) return LoadResult<FileFingerprint>.Fail(doc.Failure!);
                     ct.ThrowIfCancellationRequested();
                     ulong hash = NbtCanonicalHasher.Hash(doc.Value!.Root, compoundOrderMatters, _ignored, keyedLists);

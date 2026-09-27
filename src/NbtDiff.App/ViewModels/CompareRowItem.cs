@@ -11,8 +11,8 @@ public enum RowFilter
     /// <summary>Different, probably different, or one-sided. Errors and pending rows are hidden.</summary>
     Differences,
     Same,
-    /// <summary>Left-only and right-only.</summary>
-    Orphans,
+    LeftOnly,
+    RightOnly,
     /// <summary>Unreadable on either side.</summary>
     Errors,
 }
@@ -48,8 +48,20 @@ public sealed partial class CompareRowItem : ObservableObject, IFlatTreeNode<Com
     public string? CountsText => IsDirectory ? DescribeCounts(Row.Counts) : null;
     public string? ToolTipText => Row.Error ?? (IsDirectory ? CountsText : null);
 
+    public StateKind State => StateKinds.Of(Row.Status);
+    private bool NeedsAttention => Row.Status is not (RowStatus.Same or RowStatus.Pending);
+    /// <summary>Files are tinted by state; a folder only while collapsed, since expanded its changed children carry the colour (#10).</summary>
+    public RowTint Tint => !NeedsAttention || (IsDirectory && IsExpanded) ? RowTint.None : new RowTint(State);
+    /// <summary>An expanded folder with differences inside shows a dot in the gutter instead of a chip.</summary>
+    public bool IsRollup => IsDirectory && IsExpanded && NeedsAttention;
+    /// <summary>A folder's non-same counts, shown in muted text after its name: <c>2 probably differ · 2 left-only</c>.</summary>
+    public string? InlineCounts => IsDirectory && NeedsAttention ? DescribeCounts(Row.Counts with { Same = 0 }) : null;
+    /// <summary>Which side was modified later; the older time is dimmed.</summary>
+    public bool LeftIsNewer => !IsDirectory && Row.Left is { } l && Row.Right is { } r && l.Modified > r.Modified;
+    public bool RightIsNewer => !IsDirectory && Row.Left is { } l && Row.Right is { } r && r.Modified > l.Modified;
+
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
+    [NotifyPropertyChangedFor(nameof(ExpanderGlyph), nameof(Tint), nameof(IsRollup))]
     private bool _isExpanded;
 
     [ObservableProperty]
@@ -91,6 +103,10 @@ public sealed partial class CompareRowItem : ObservableObject, IFlatTreeNode<Com
         OnPropertyChanged(nameof(Error));
         OnPropertyChanged(nameof(CountsText));
         OnPropertyChanged(nameof(ToolTipText));
+        OnPropertyChanged(nameof(State));
+        OnPropertyChanged(nameof(Tint));
+        OnPropertyChanged(nameof(IsRollup));
+        OnPropertyChanged(nameof(InlineCounts));
     }
 
     public static bool Matches(RowFilter filter, RowStatus status) => filter switch
@@ -98,7 +114,8 @@ public sealed partial class CompareRowItem : ObservableObject, IFlatTreeNode<Com
         RowFilter.All => true,
         RowFilter.Differences => status is RowStatus.Different or RowStatus.ProbablyDifferent or RowStatus.LeftOnly or RowStatus.RightOnly,
         RowFilter.Same => status == RowStatus.Same,
-        RowFilter.Orphans => status is RowStatus.LeftOnly or RowStatus.RightOnly,
+        RowFilter.LeftOnly => status == RowStatus.LeftOnly,
+        RowFilter.RightOnly => status == RowStatus.RightOnly,
         RowFilter.Errors => status == RowStatus.Error,
         _ => true,
     };

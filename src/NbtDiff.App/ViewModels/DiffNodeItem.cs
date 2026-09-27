@@ -39,15 +39,89 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
     public bool IsArray => Node.Left is NbtByteArray or NbtIntArray or NbtLongArray || Node.Right is NbtByteArray or NbtIntArray or NbtLongArray;
 
     public string TypeText { get; }
+    /// <summary>Right minus left for a changed number, e.g. <c>+400</c> or <c>−0.5</c>; null otherwise (#12).</summary>
+    public string? DeltaText { get; }
+    /// <summary>Entry-count change of a compound or list whose sizes differ, e.g. <c>+4</c>; null otherwise (#7, #12).</summary>
+    public string? CountDeltaText { get; }
+    /// <summary>The path as an NBT path, e.g. <c>Entities[0].NeoForgeData."naturesaura:time_alive"</c>.</summary>
+    public string NbtPath => ToNbtPath(Node.Path);
+    /// <summary>Muted text after a roll-up container's name (#12): <c>4 changes</c>, or <c>2 added</c> / <c>1 removed</c> when that is all it is.</summary>
+    public string? InlineChangesText
+    {
+        get
+        {
+            if (!IsRollup) return null;
+            var kinds = TopChanges(Node).Select(n => n.Kind).ToList();
+            int n = kinds.Count;
+            if (kinds.All(k => k == DiffKind.Added)) return $"{n} added";
+            if (kinds.All(k => k == DiffKind.Removed)) return $"{n} removed";
+            return $"{ChangedDescendants} {(ChangedDescendants == 1 ? "change" : "changes")}";
+        }
+    }
+    /// <summary>The whole value (the cell text may be cut); null for a missing side.</summary>
+    public string? LeftFullText => LeftToolTip ?? LeftValueText;
+    public string? RightFullText => RightToolTip ?? RightValueText;
+    /// <summary>A changed number's relative change against the left value, e.g. <c>+5.6%</c>; null when not meaningful.</summary>
+    public string? PercentText => DeltaText is null ? null : Percent(Node.Left, Node.Right);
+    /// <summary>For the detail pane: <c>int · changed</c>.</summary>
+    public string KindText => $"{TypeText} · {(IsRollup ? "changes below" : Node.Kind switch
+    {
+        DiffKind.Unchanged => "unchanged",
+        DiffKind.Added => "only on the right",
+        DiffKind.Removed => "only on the left",
+        DiffKind.ValueChanged => "changed",
+        DiffKind.TypeChanged => "type changed",
+        DiffKind.Moved => "moved",
+        DiffKind.Renamed => "renamed",
+        _ => Node.Kind.ToString(),
+    })}";
+
+    /// <summary>The changed nodes under <paramref name="node"/> whose parent is not itself changed.</summary>
+    private static IEnumerable<DiffNode> TopChanges(DiffNode node)
+    {
+        foreach (var child in node.Children)
+        {
+            if (child.Kind != DiffKind.Unchanged) yield return child;
+            else foreach (var inner in TopChanges(child)) yield return inner;
+        }
+    }
+
+    private static string? Percent(NbtTag? left, NbtTag? right)
+    {
+        double? l = Number(left), r = Number(right);
+        if (l is not { } a || r is not { } b || a == 0) return null;
+        double p = (b - a) / Math.Abs(a) * 100;
+        if (double.IsNaN(p) || double.IsInfinity(p)) return null;
+        return (p >= 0 ? "+" : "−") + Math.Abs(p).ToString(Math.Abs(p) < 10 ? "0.0" : "0", CultureInfo.InvariantCulture) + "%";
+    }
+
+    private static double? Number(NbtTag? tag) => tag switch
+    {
+        NbtByte b => (sbyte)b.Value,
+        NbtShort s => s.Value,
+        NbtInt i => i.Value,
+        NbtLong l => l.Value,
+        NbtFloat f => f.Value,
+        NbtDouble d => d.Value,
+        _ => null,
+    };
     public string? LeftValueText { get; }
     public string? RightValueText { get; }
     public string? LeftToolTip { get; }
     public string? RightToolTip { get; }
-    public string StatusGlyph => Glyph(Node.Kind);
-    public string ToolTipText => $"{(Path.Length == 0 ? "(root)" : Path)}: {Describe(Node.Kind)}";
+    /// <summary>Unchanged itself, but something below it changed (#7): shown as a roll-up, never as "=".</summary>
+    public bool IsRollup => Node.Kind == DiffKind.Unchanged && Node.HasChanges;
+    public StateKind State => IsRollup ? StateKind.Different : StateKinds.Of(Node.Kind);
+    /// <summary>Changed rows are tinted; a roll-up container only while collapsed, since expanded its changed children carry the colour.</summary>
+    public RowTint Tint => IsRollup
+        ? (IsExpanded ? RowTint.None : new RowTint(StateKind.Different, Rollup: true))
+        : Node.Kind == DiffKind.Unchanged ? RowTint.None : new RowTint(StateKinds.Of(Node.Kind));
+    public string StatusGlyph => IsRollup ? "●" : Glyph(Node.Kind);
+    public string ToolTipText => $"{(Path.Length == 0 ? "(root)" : Path)}: " +
+        (IsRollup ? $"{ChangedDescendants} {(ChangedDescendants == 1 ? "change" : "changes")} below" : Describe(Node.Kind));
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
+    [NotifyPropertyChangedFor(nameof(ExpanderGlyph), nameof(Tint))]
     private bool _isExpanded;
 
     [ObservableProperty]
@@ -63,6 +137,13 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
         Node = node;
         Parent = parent;
         TypeText = TypeDescription(node);
+        DeltaText = node.Kind == DiffKind.ValueChanged ? Delta(node.Left, node.Right) : null;
+        CountDeltaText = (node.Left, node.Right) switch
+        {
+            (NbtCompound l, NbtCompound r) when l.Count != r.Count => Signed(r.Count - l.Count),
+            (NbtList l, NbtList r) when l.Count != r.Count => Signed(r.Count - l.Count),
+            _ => null,
+        };
         (LeftValueText, LeftToolTip) = ValueText(node.Left, node.Array);
         (RightValueText, RightToolTip) = ValueText(node.Right, node.Array);
         if (node.Name.StartsWith('['))
@@ -115,6 +196,42 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
         foreach (var c in _children)
             foreach (var d in c.Descendants())
                 yield return d;
+    }
+
+    /// <summary>Right minus left when both sides are the same numeric type; null otherwise.</summary>
+    public static string? Delta(NbtTag? left, NbtTag? right) => (left, right) switch
+    {
+        (NbtByte l, NbtByte r) => Signed((sbyte)r.Value - (sbyte)l.Value),
+        (NbtShort l, NbtShort r) => Signed(r.Value - l.Value),
+        (NbtInt l, NbtInt r) => Signed((long)r.Value - l.Value),
+        (NbtLong l, NbtLong r) => Signed(unchecked(r.Value - l.Value)),
+        (NbtFloat l, NbtFloat r) => Signed((double)r.Value - l.Value),
+        (NbtDouble l, NbtDouble r) => Signed(r.Value - l.Value),
+        _ => null,
+    };
+
+    private static string Signed(long v) => v >= 0 ? "+" + v.ToString(CultureInfo.InvariantCulture) : "−" + (-(decimal)v).ToString(CultureInfo.InvariantCulture);
+
+    private static string? Signed(double v)
+    {
+        if (double.IsNaN(v) || double.IsInfinity(v)) return null;
+        string text = Math.Abs(v).ToString("0.######", CultureInfo.InvariantCulture);
+        if (text == "0") text = Math.Abs(v).ToString("G3", CultureInfo.InvariantCulture);
+        return (v >= 0 ? "+" : "−") + text;
+    }
+
+    /// <summary><c>Entities/[0]/NeoForgeData/naturesaura:time_alive</c> → <c>Entities[0].NeoForgeData."naturesaura:time_alive"</c>.</summary>
+    public static string ToNbtPath(string path)
+    {
+        if (path.Length == 0) return "";
+        var sb = new System.Text.StringBuilder();
+        foreach (var segment in path.Split('/'))
+        {
+            if (segment.StartsWith('[')) { sb.Append(segment); continue; }
+            if (sb.Length > 0) sb.Append('.');
+            sb.Append(segment.All(SnbtParser.IsUnquotedChar) && segment.Length > 0 ? segment : "\"" + segment.Replace("\"", "\\\"") + "\"");
+        }
+        return sb.ToString();
     }
 
     public static string Glyph(DiffKind kind) => kind switch
