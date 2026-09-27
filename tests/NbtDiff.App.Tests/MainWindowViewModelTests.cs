@@ -250,4 +250,15 @@ public class MainWindowViewModelTests
         Assert.Contains("two folders, or two files", folder.ErrorMessage);
         Assert.Same(folder, shell.Current); // nothing was pushed over the folder view
     }
+    [Fact]
+    public void CommentOnlySnbt_OpensInTheTextView()
+    {
+        using var d = new TempDir();
+        File.WriteAllText(d.File("a.snbt"), "# File has moved!\n");
+        File.WriteAllText(d.File("b.snbt"), "{ ok: 1b }\n");
+        var shell = new MainWindowViewModel(new FakeDialogService(), new ImmediateUiDispatcher());
+        Assert.IsType<TextCompareViewModel>(shell.CreateCompareView(FileKind.Snbt, d.File("a.snbt"), d.File("b.snbt")));
+        Assert.IsType<FileCompareViewModel>(shell.CreateCompareView(FileKind.Snbt, d.File("b.snbt"), d.File("b.snbt")));
+        Assert.IsType<FileCompareViewModel>(shell.CreateCompareView(FileKind.Snbt, null, d.File("b.snbt")));
+    }
 }

@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NbtDiff.App.Services;
 using NbtDiff.Core;
+using NbtDiff.Nbt;
 
 namespace NbtDiff.App.ViewModels;
 
@@ -87,6 +88,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// text a line diff, binary files a summary of sizes and hashes. A null path is an absent side.
     /// Loading starts immediately.
     /// </summary>
+    private static bool ParsesAsSnbt(string? path) => path is null || !File.Exists(path) || NbtDocument.Load(path).Ok;
+
     public ViewModelBase CreateCompareView(FileKind kind, string? leftPath, string? rightPath, FileFingerprint? leftFp = null, FileFingerprint? rightFp = null)
     {
         switch (kind)
@@ -98,6 +101,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 _ = vm.Load();
                 return vm;
             }
+            case FileKind.Snbt when !ParsesAsSnbt(leftPath) || !ParsesAsSnbt(rightPath):
+                // Comment-only or otherwise not SNBT (FTB leaves such files behind): a line diff.
+                goto case FileKind.Text;
             case FileKind.Nbt:
             case FileKind.Snbt:
             {

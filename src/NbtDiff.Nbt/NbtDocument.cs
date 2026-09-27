@@ -4,7 +4,7 @@ using NbtDiff.Nbt.Snbt;
 
 namespace NbtDiff.Nbt;
 
-/// <summary>A parsed standalone NBT file (level.dat, player data, .snbt, ...). Immutable after load.</summary>
+/// <summary>A parsed standalone NBT file (level.dat, player data, .snbt, ...).</summary>
 public sealed class NbtDocument
 {
     private const int BedrockHeaderSize = 8;
@@ -12,6 +12,10 @@ public sealed class NbtDocument
     public string Path { get; }
     public NbtCompound Root { get; }
     public NbtFormatInfo Format { get; }
+
+    // SNBT only: the file's text as last loaded or saved, which Save patches instead of rewriting.
+    private string? _snbtText;
+    private bool _snbtBom;
 
     private NbtDocument(string path, NbtCompound root, NbtFormatInfo format)
     {
@@ -95,12 +99,15 @@ public sealed class NbtDocument
                 throw new FormatException("Text does not start with '{' (after optional whitespace and # comments)");
 
             stream.Position = 0;
+            bool bom = stream.ReadByte() == 0xEF && stream.ReadByte() == 0xBB && stream.ReadByte() == 0xBF;
+            stream.Position = 0;
             using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
-            var tag = SnbtParser.Parse(reader.ReadToEnd());
+            string text = reader.ReadToEnd();
+            var tag = SnbtParser.Parse(text);
             if (tag is not NbtCompound root)
                 throw new FormatException($"SNBT root is a {tag.TagType}, not a compound");
             root.Name = "";
-            return new NbtDocument(path, root, NbtFormatInfo.Snbt);
+            return new NbtDocument(path, root, NbtFormatInfo.Snbt) { _snbtText = text, _snbtBom = bom };
         });
 
     private static LoadResult<NbtDocument> LoadBinary(Stream stream, string path, NbtFormat format, bool bigEndian, bool skipHeader) =>
@@ -120,7 +127,9 @@ public sealed class NbtDocument
 
     /// <summary>
     /// Writes <paramref name="root"/> back to <see cref="Path"/> in the format and compression the
-    /// file was loaded with (SNBT files are rewritten pretty-printed). The first save of a path
+    /// file was loaded with. SNBT is patched rather than rewritten (<see cref="SnbtPatcher"/>): only the
+    /// text of what changed is replaced, in the file's own dialect, so comments and formatting survive;
+    /// a change that cannot be written that way is refused and nothing is written. The first save of a path
     /// copies the pre-nbtdiff file to <c>&lt;path&gt;.bak</c>; later saves leave that backup alone.
     /// The file is replaced atomically, so a failed save leaves it as it was.
     /// Bedrock variants are refused rather than risk corrupting their headers.
@@ -134,8 +143,22 @@ public sealed class NbtDocument
             SafeFile.BackupOnce(Path);
             if (Format.Format == NbtFormat.Snbt)
             {
-                var text = System.Text.Encoding.UTF8.GetBytes(SnbtWriter.Write(root, SnbtOptions.Pretty));
-                SafeFile.WriteAtomic(Path, s => s.Write(text));
+                string text;
+                try
+                {
+                    text = _snbtText is null ? SnbtWriter.Write(root, SnbtOptions.Pretty) : SnbtPatcher.Patch(_snbtText, root);
+                }
+                catch (InvalidOperationException e)
+                {
+                    throw new InvalidOperationException($"{e.Message}; the file was not changed", e);
+                }
+                var bytes = Encoding.UTF8.GetBytes(text);
+                SafeFile.WriteAtomic(Path, s =>
+                {
+                    if (_snbtBom) s.Write([0xEF, 0xBB, 0xBF]);
+                    s.Write(bytes);
+                });
+                _snbtText = text;
             }
             else
             {

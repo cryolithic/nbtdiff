@@ -29,7 +29,8 @@ Runs on Windows and Linux.
 - **Export** a folder compare as a text or JSON report.
 - **Copy and save.** Copy a value or a whole subtree from one side to the other, WinMerge-style,
   and save the edited side back to its file or region.
-- **Corrupt files don't stop a scan.** They show as an error row with the reason.
+- **Corrupt files don't stop a scan.** They show as an error row with the reason. (`.snbt` files
+  that hold only comments, which FTB leaves behind, are compared as text.)
 - **Formats:** Java NBT (`level.dat`, player data, `.nbt`, `.schematic`/`.litematic` and other
   gzip/zlib/uncompressed NBT), region files (`.mca`, `.mcr`, external `.mcc` chunks), SNBT including
   FTB's dialect, and Bedrock NBT / `level.dat` (compare only).
@@ -115,9 +116,13 @@ In the tag view, `◀ Copy to left` / `Copy to right ▶` copy the selected row 
 whole subtree, into an existing or a missing side alike) from one side to the other, and the diff
 refreshes immediately. Edits stay in memory until `Ctrl+S` writes each edited side back:
 
-- `.dat` and `.snbt` files are rewritten in their original compression. The new file is written
-  beside the old one and swapped in only once it is complete, so a failed or interrupted save
-  leaves the original as it was.
+- `.dat` files are rewritten in their original compression. `.snbt` files (FTB Quests, Teams,
+  Chunks and other mod configs) are not rewritten at all: only the text of the values you changed is
+  replaced, in the file's own style, so comments, key order, indentation and number formatting stay
+  exactly as they were. A change that cannot be written that way is refused rather than reformatting
+  the file.
+- The new file is written beside the old one and swapped in only once it is complete, so a failed or
+  interrupted save leaves the original as it was.
 - A chunk is re-appended to its region file the way Minecraft itself saves; the chunk keeps its
   compression scheme, and the region header is only pointed at it once it is on disk.
 - The first save of any file or region keeps the untouched original as `<file>.bak`
