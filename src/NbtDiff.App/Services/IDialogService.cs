@@ -85,6 +85,7 @@ public sealed class AvaloniaDialogService(Func<TopLevel?> topLevel) : IDialogSer
         var dialog = new Window
         {
             Title = title,
+            Icon = owner.Icon,
             ShowInTaskbar = false,
             CanResize = false,
             SizeToContent = SizeToContent.WidthAndHeight,
