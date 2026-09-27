@@ -43,11 +43,19 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
     public string? RightValueText { get; }
     public string? LeftToolTip { get; }
     public string? RightToolTip { get; }
-    public string StatusGlyph => Glyph(Node.Kind);
-    public string ToolTipText => $"{(Path.Length == 0 ? "(root)" : Path)}: {Describe(Node.Kind)}";
+    /// <summary>Unchanged itself, but something below it changed (#7): shown as a roll-up, never as "=".</summary>
+    public bool IsRollup => Node.Kind == DiffKind.Unchanged && Node.HasChanges;
+    public StateKind State => IsRollup ? StateKind.Different : StateKinds.Of(Node.Kind);
+    /// <summary>Changed rows are tinted; a roll-up container only while collapsed, since expanded its changed children carry the colour.</summary>
+    public RowTint Tint => IsRollup
+        ? (IsExpanded ? RowTint.None : new RowTint(StateKind.Different, Rollup: true))
+        : Node.Kind == DiffKind.Unchanged ? RowTint.None : new RowTint(StateKinds.Of(Node.Kind));
+    public string StatusGlyph => IsRollup ? "●" : Glyph(Node.Kind);
+    public string ToolTipText => $"{(Path.Length == 0 ? "(root)" : Path)}: " +
+        (IsRollup ? $"{ChangedDescendants} {(ChangedDescendants == 1 ? "change" : "changes")} below" : Describe(Node.Kind));
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ExpanderGlyph))]
+    [NotifyPropertyChangedFor(nameof(ExpanderGlyph), nameof(Tint))]
     private bool _isExpanded;
 
     [ObservableProperty]

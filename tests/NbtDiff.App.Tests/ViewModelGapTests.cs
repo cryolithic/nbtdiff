@@ -284,8 +284,8 @@ public class ViewModelGapTests
         Assert.False(root.IsChanged);
         Assert.True(root.HasChanges);
         Assert.Equal(5, root.ChangedDescendants);
-        Assert.Equal("=", root.StatusGlyph);
-        Assert.Equal("(root): unchanged", root.ToolTipText);
+        Assert.Equal("●", root.StatusGlyph);                       // #7: a roll-up, not "="
+        Assert.Equal("(root): 5 changes below", root.ToolTipText);
         Assert.Equal("", root.ExpanderGlyph);
         root.HasVisibleChildren = true;
         Assert.Equal("▸", root.ExpanderGlyph);
@@ -313,7 +313,8 @@ public class ViewModelGapTests
         Assert.Equal(DiffKind.Unchanged, byPath["a"].Kind);
         Assert.True(byPath["a"].HasChanges);
         Assert.Equal(1, byPath["a"].ChangedDescendants);
-        Assert.Equal("=", byPath["a"].StatusGlyph);
+        Assert.Equal("●", byPath["a"].StatusGlyph);
+        Assert.Equal("a: 1 change below", byPath["a"].ToolTipText);
 
         // List item identity: id plus block position.
         Assert.Equal("[0]: \"minecraft:cow\" @ (1, 64, -3)", byPath["Entities/[0]"].Name);

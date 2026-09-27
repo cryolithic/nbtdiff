@@ -1,0 +1,91 @@
+<!--
+  The state palette (#9, docs/design/README.md). Colour means state and nothing else:
+  red = different, blue = left only, purple = right only, green = same, amber = error.
+  Keys: State.{Kind} fill, State.{Kind}.Tint row background, State.{Kind}.Rollup lighter tint for a
+  container whose change is inside it. App.* are the neutral surfaces and text.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="App.Background" Color="#111317" />
+      <SolidColorBrush x:Key="App.Surface" Color="#181B21" />
+      <SolidColorBrush x:Key="App.Control" Color="#1F232B" />
+      <SolidColorBrush x:Key="App.ControlBorder" Color="#2F3540" />
+      <SolidColorBrush x:Key="App.Divider" Color="#2A2F39" />
+      <SolidColorBrush x:Key="App.Text" Color="#E6E6E3" />
+      <SolidColorBrush x:Key="App.TextMuted" Color="#9AA0AA" />
+      <SolidColorBrush x:Key="App.TextDim" Color="#7D838D" />
+      <SolidColorBrush x:Key="App.Primary" Color="#E6E6E3" />
+      <SolidColorBrush x:Key="App.PrimaryText" Color="#111317" />
+      <SolidColorBrush x:Key="App.HatchA" Color="#191C22" />
+      <SolidColorBrush x:Key="App.HatchB" Color="#121418" />
+
+      <SolidColorBrush x:Key="State.Different" Color="#EF4B4B" />
+      <SolidColorBrush x:Key="State.Different.Tint" Color="#24EF4B4B" />
+      <SolidColorBrush x:Key="State.Different.Rollup" Color="#12EF4B4B" />
+      <SolidColorBrush x:Key="State.ProbablyDifferent" Color="#EF4B4B" />
+      <SolidColorBrush x:Key="State.ProbablyDifferent.Tint" Color="#14EF4B4B" />
+      <SolidColorBrush x:Key="State.ProbablyDifferent.Rollup" Color="#0AEF4B4B" />
+      <SolidColorBrush x:Key="State.LeftOnly" Color="#3D8FE6" />
+      <SolidColorBrush x:Key="State.LeftOnly.Tint" Color="#293D8FE6" />
+      <SolidColorBrush x:Key="State.LeftOnly.Rollup" Color="#143D8FE6" />
+      <SolidColorBrush x:Key="State.RightOnly" Color="#A060E8" />
+      <SolidColorBrush x:Key="State.RightOnly.Tint" Color="#29A060E8" />
+      <SolidColorBrush x:Key="State.RightOnly.Rollup" Color="#14A060E8" />
+      <SolidColorBrush x:Key="State.Moved" Color="#E0B030" />
+      <SolidColorBrush x:Key="State.Moved.Tint" Color="#24E0B030" />
+      <SolidColorBrush x:Key="State.Moved.Rollup" Color="#12E0B030" />
+      <SolidColorBrush x:Key="State.Error" Color="#E0A020" />
+      <SolidColorBrush x:Key="State.Error.Tint" Color="#1FE0A020" />
+      <SolidColorBrush x:Key="State.Error.Rollup" Color="#10E0A020" />
+      <SolidColorBrush x:Key="State.Same" Color="#4F7359" />
+      <SolidColorBrush x:Key="State.Pending" Color="#7D838D" />
+      <SolidColorBrush x:Key="State.Empty" Color="#1A1D23" />
+
+      <!-- Fluent overrides: the dark grey background instead of pure black. -->
+      <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#111317" />
+      <SolidColorBrush x:Key="SystemRegionBrush" Color="#111317" />
+      <Color x:Key="SystemRegionColor">#111317</Color>
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="App.Background" Color="#F7F7F5" />
+      <SolidColorBrush x:Key="App.Surface" Color="#EEEEEB" />
+      <SolidColorBrush x:Key="App.Control" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="App.ControlBorder" Color="#CFD3D9" />
+      <SolidColorBrush x:Key="App.Divider" Color="#DCDFE4" />
+      <SolidColorBrush x:Key="App.Text" Color="#1B1D21" />
+      <SolidColorBrush x:Key="App.TextMuted" Color="#59606A" />
+      <SolidColorBrush x:Key="App.TextDim" Color="#7D838D" />
+      <SolidColorBrush x:Key="App.Primary" Color="#1B1D21" />
+      <SolidColorBrush x:Key="App.PrimaryText" Color="#F7F7F5" />
+      <SolidColorBrush x:Key="App.HatchA" Color="#ECECE8" />
+      <SolidColorBrush x:Key="App.HatchB" Color="#F5F5F2" />
+
+      <SolidColorBrush x:Key="State.Different" Color="#D93B3B" />
+      <SolidColorBrush x:Key="State.Different.Tint" Color="#1FD93B3B" />
+      <SolidColorBrush x:Key="State.Different.Rollup" Color="#10D93B3B" />
+      <SolidColorBrush x:Key="State.ProbablyDifferent" Color="#D93B3B" />
+      <SolidColorBrush x:Key="State.ProbablyDifferent.Tint" Color="#12D93B3B" />
+      <SolidColorBrush x:Key="State.ProbablyDifferent.Rollup" Color="#09D93B3B" />
+      <SolidColorBrush x:Key="State.LeftOnly" Color="#2F7FD6" />
+      <SolidColorBrush x:Key="State.LeftOnly.Tint" Color="#242F7FD6" />
+      <SolidColorBrush x:Key="State.LeftOnly.Rollup" Color="#122F7FD6" />
+      <SolidColorBrush x:Key="State.RightOnly" Color="#8A4FD6" />
+      <SolidColorBrush x:Key="State.RightOnly.Tint" Color="#248A4FD6" />
+      <SolidColorBrush x:Key="State.RightOnly.Rollup" Color="#128A4FD6" />
+      <SolidColorBrush x:Key="State.Moved" Color="#B8860B" />
+      <SolidColorBrush x:Key="State.Moved.Tint" Color="#1FB8860B" />
+      <SolidColorBrush x:Key="State.Moved.Rollup" Color="#10B8860B" />
+      <SolidColorBrush x:Key="State.Error" Color="#C98A10" />
+      <SolidColorBrush x:Key="State.Error.Tint" Color="#1FC98A10" />
+      <SolidColorBrush x:Key="State.Error.Rollup" Color="#10C98A10" />
+      <SolidColorBrush x:Key="State.Same" Color="#6E9A78" />
+      <SolidColorBrush x:Key="State.Pending" Color="#7D838D" />
+      <SolidColorBrush x:Key="State.Empty" Color="#E6E8EC" />
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>
