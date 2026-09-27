@@ -5,7 +5,10 @@ using NbtDiff.Core;
 namespace NbtDiff.App.ViewModels;
 
 /// <summary>One element position of an array pair. A null side means that array is shorter.</summary>
-public sealed record ArrayDetailRow(int Index, string? Left, string? Right, bool IsDifferent);
+public sealed record ArrayDetailRow(int Index, string? Left, string? Right, bool IsDifferent)
+{
+    public StateKind State => IsDifferent ? StateKind.Different : StateKind.None;
+}
 
 /// <summary>Computes the slice of two arrays shown in the detail pane around their first difference.</summary>
 public static class ArrayDetailWindow

@@ -66,6 +66,11 @@ public sealed partial class FileCompareViewModel : ViewModelBase
 
     public bool HasError => ErrorMessage is not null;
     public bool HasArrayDetail => ArrayDetail is not null;
+    /// <summary>The detail pane shows a value pair unless the selection is an array (its element table) or nothing.</summary>
+    public bool HasValueDetail => SelectedItem is not null && !HasArrayDetail;
+    /// <summary>The matching options in effect, for the right of the status bar: <c>Key order ignored · lists matched by UUID / id</c>.</summary>
+    public string OptionsText =>
+        $"Key order {(CompoundOrderMatters ? "matters" : "ignored")} · lists matched {(UseKeyedAligner ? "by UUID / id" : "by position")}";
     public bool HasResult => _root is not null;
     /// <summary>Either side has WinMerge-style copies that have not been written back yet.</summary>
     public bool HasUnsavedEdits => LeftModified || RightModified;
@@ -263,6 +268,7 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     {
         _settings.Current.CompoundOrderMatters = value;
         _settings.Save();
+        OnPropertyChanged(nameof(OptionsText));
         _ = Rediff();
     }
 
@@ -270,11 +276,15 @@ public sealed partial class FileCompareViewModel : ViewModelBase
     {
         _settings.Current.UseKeyedAligner = value;
         _settings.Save();
+        OnPropertyChanged(nameof(OptionsText));
         _ = Rediff();
     }
 
-    partial void OnSelectedItemChanged(DiffNodeItem? value) =>
+    partial void OnSelectedItemChanged(DiffNodeItem? value)
+    {
         ArrayDetail = value is { IsArray: true } ? ArrayDetailWindow.Compute(value.Node) : null;
+        OnPropertyChanged(nameof(HasValueDetail));
+    }
 
     [RelayCommand]
     private void NextChange()

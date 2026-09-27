@@ -2,12 +2,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:NbtDiff.App.ViewModels"
              xmlns:conv="using:NbtDiff.App.Converters"
+             xmlns:ctl="using:NbtDiff.App.Controls"
              x:Class="NbtDiff.App.Views.FileCompareView"
              x:DataType="vm:FileCompareViewModel">
 
   <UserControl.Resources>
-    <conv:DiffKindBackgroundConverter x:Key="KindBackground" />
-    <conv:DifferentRowBackgroundConverter x:Key="DifferentRowBackground" />
     <conv:DepthToMarginConverter x:Key="DepthToMargin" />
   </UserControl.Resources>
 
@@ -27,7 +26,7 @@
       <Setter Property="ToolTip.Tip" Value="{ReflectionBinding ToolTipText}" />
     </Style>
     <Style Selector="DataGrid#Detail DataGridRow">
-      <Setter Property="Background" Value="{ReflectionBinding IsDifferent, Converter={StaticResource DifferentRowBackground}}" />
+      <Setter Property="Background" Value="{ReflectionBinding State, Converter={x:Static conv:StateBrushConverter.Instance}, ConverterParameter=Tint}" />
     </Style>
     <Style Selector="Button.expander">
       <Setter Property="Width" Value="18" />
@@ -40,71 +39,143 @@
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-    <Style Selector="TextBlock.placeholder">
-      <Setter Property="Opacity" Value="0.35" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
     <Style Selector="TextBlock.cell">
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="Margin" Value="6,0" />
+    </Style>
+    <Style Selector="Border.keycap">
+      <Setter Property="BorderBrush" Value="{DynamicResource App.ControlBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="Margin" Value="8,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.keycap TextBlock">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="Foreground" Value="{DynamicResource App.TextMuted}" />
+    </Style>
+    <Style Selector="Border.value">
+      <Setter Property="Background" Value="{DynamicResource App.Background}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource App.Divider}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16,10" />
     </Style>
   </UserControl.Styles>
 
   <DockPanel>
 
-    <!-- Toolbar -->
-    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
-      <WrapPanel ItemSpacing="8" LineSpacing="4">
-        <CheckBox Content="Show unchanged" IsChecked="{Binding ShowUnchanged}" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <CheckBox Content="Key order matters" IsChecked="{Binding CompoundOrderMatters}"
-                  ToolTip.Tip="Report compounds whose keys are in a different order" />
-        <CheckBox Content="Match list items by UUID / id" IsChecked="{Binding UseKeyedAligner}"
-                  ToolTip.Tip="Pair entities, block entities and items by their key instead of by position" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <Button Content="◀ Previous change (F7)" Command="{Binding PreviousChangeCommand}" />
-        <Button Content="Next change (F8) ▶" Command="{Binding NextChangeCommand}" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" IsVisible="{Binding HasChunkNavigation}" />
-        <Button Content="◀ Prev chunk (Ctrl+F7)" Command="{Binding PreviousChunkCommand}" IsVisible="{Binding HasChunkNavigation}"
-                ToolTip.Tip="Step to the previous changed chunk of this region" />
-        <Button Content="Next chunk (Ctrl+F8) ▶" Command="{Binding NextChunkCommand}" IsVisible="{Binding HasChunkNavigation}"
-                ToolTip.Tip="Step to the next changed chunk of this region" />
-        <TextBlock Text="{Binding ChunkPositionText}" VerticalAlignment="Center" IsVisible="{Binding HasChunkNavigation}" Opacity="0.7" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <Button Content="◀ Copy to left" Command="{Binding CopyToLeftCommand}"
-                ToolTip.Tip="Replace the selected row's left value/subtree with the right one (Alt+Left)" />
-        <Button Content="Copy to right ▶" Command="{Binding CopyToRightCommand}"
-                ToolTip.Tip="Replace the selected row's right value/subtree with the left one (Alt+Right)" />
-        <TextBlock Text="● unsaved" VerticalAlignment="Center" Opacity="0.8" IsVisible="{Binding HasUnsavedEdits}"
-                   ToolTip.Tip="Copies not yet written back — press Ctrl+S" />
-        <Button Content="Save" Command="{Binding SaveCommand}"
-                ToolTip.Tip="Write the edited side(s) back to their files / region, keeping a one-time .bak of each file (Ctrl+S)" />
-        <TextBlock Text="{Binding SaveStatusText}" VerticalAlignment="Center" Opacity="0.7" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <Button Content="Expand all" Command="{Binding ExpandAllCommand}" />
-        <Button Content="Collapse all" Command="{Binding CollapseAllCommand}" />
-      </WrapPanel>
-      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
-      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" FontFamily="Consolas,monospace" />
-    </StackPanel>
+    <!-- One toolbar row: navigate | edit | view -->
+    <Border DockPanel.Dock="Top" Classes="bar" Padding="10,8">
+      <StackPanel Spacing="6">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10">
+            <CheckBox Content="Show unchanged" IsChecked="{Binding ShowUnchanged}" />
+            <CheckBox Content="Key order matters" IsChecked="{Binding CompoundOrderMatters}"
+                      ToolTip.Tip="Report compounds whose keys are in a different order" />
+            <CheckBox Content="Match lists by UUID / id" IsChecked="{Binding UseKeyedAligner}"
+                      ToolTip.Tip="Pair entities, block entities and items by their key instead of by position" />
+            <Border Classes="divider" />
+            <Button Classes="icon" Content="⇕" Command="{Binding ExpandAllCommand}" ToolTip.Tip="Expand all" />
+            <Button Classes="icon" Content="⇳" Command="{Binding CollapseAllCommand}" ToolTip.Tip="Collapse all" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Button Command="{Binding PreviousChangeCommand}" ToolTip.Tip="Previous change (F7)">
+              <StackPanel Orientation="Horizontal"><TextBlock Text="↑  Previous change" /><Border Classes="keycap"><TextBlock Text="F7" /></Border></StackPanel>
+            </Button>
+            <Button Command="{Binding NextChangeCommand}" ToolTip.Tip="Next change (F8)">
+              <StackPanel Orientation="Horizontal"><TextBlock Text="↓  Next change" /><Border Classes="keycap"><TextBlock Text="F8" /></Border></StackPanel>
+            </Button>
+            <Border Classes="divider" />
+            <Button Content="◀  Copy to left" Command="{Binding CopyToLeftCommand}"
+                    ToolTip.Tip="Replace the selected row's left value or subtree with the right one (Alt+Left)" />
+            <Button Content="Copy to right  ▶" Command="{Binding CopyToRightCommand}"
+                    ToolTip.Tip="Replace the selected row's right value or subtree with the left one (Alt+Right)" />
+            <Button Command="{Binding SaveCommand}"
+                    ToolTip.Tip="Write the edited side(s) back to their files or region, keeping a one-time .bak (Ctrl+S)">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="●" Foreground="{DynamicResource State.Different}" IsVisible="{Binding HasUnsavedEdits}" />
+                <TextBlock Text="Save" />
+              </StackPanel>
+            </Button>
+            <TextBlock Classes="muted small" Text="{Binding SaveStatusText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </DockPanel>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" />
+        <TextBlock Classes="error mono" Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" />
+      </StackPanel>
+    </Border>
 
-    <!-- Status bar -->
-    <TextBlock DockPanel.Dock="Bottom" Margin="8,4,8,6" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis" />
-
-    <!-- Array detail pane -->
-    <Border DockPanel.Dock="Bottom" IsVisible="{Binding HasArrayDetail}" Margin="8,4,8,0" Height="220"
-            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0">
+    <!-- Status bar: summary left, matching options right -->
+    <Border DockPanel.Dock="Bottom" Classes="statusbar">
       <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="Array elements around the first difference" Margin="0,6,0,4" FontWeight="SemiBold" />
-        <DataGrid x:Name="Detail" ItemsSource="{Binding ArrayDetail}" IsReadOnly="True" AutoGenerateColumns="False"
-                  CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="Vertical" RowHeight="22">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Index" Width="80" Binding="{Binding Index}" x:DataType="vm:ArrayDetailRow" />
-            <DataGridTextColumn Header="Left" Width="*" Binding="{Binding Left}" x:DataType="vm:ArrayDetailRow" />
-            <DataGridTextColumn Header="Right" Width="*" Binding="{Binding Right}" x:DataType="vm:ArrayDetailRow" />
-          </DataGrid.Columns>
-        </DataGrid>
+        <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding OptionsText}" />
+        <TextBlock Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis" />
       </DockPanel>
+    </Border>
+
+    <!-- Selected-tag detail pane -->
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource App.Surface}" BorderBrush="{DynamicResource App.Divider}" BorderThickness="0,1,0,0"
+            Padding="16,10" IsVisible="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <StackPanel Spacing="10">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding SelectedItem.KindText}" VerticalAlignment="Center" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="muted" Text="Path" VerticalAlignment="Center" />
+            <TextBlock Classes="mono" Text="{Binding SelectedItem.NbtPath}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="1100" />
+            <Button x:Name="CopyPath" Content="Copy path" Padding="8,2" ToolTip.Tip="Copy the NBT path to the clipboard" />
+          </StackPanel>
+        </DockPanel>
+
+        <!-- Scalars and containers: both values side by side, with per-side copy and the delta -->
+        <Grid ColumnDefinitions="*,110,*" IsVisible="{Binding HasValueDetail}">
+          <Border Grid.Column="0" Classes="value">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="Copy to right  ▶" Command="{Binding CopyToRightCommand}" VerticalAlignment="Center" />
+              <StackPanel>
+                <TextBlock Text="Left" Foreground="{DynamicResource State.LeftOnly}" FontSize="12" />
+                <Panel>
+                  <TextBlock Classes="mono" FontSize="22" Text="{Binding SelectedItem.LeftFullText}" TextTrimming="CharacterEllipsis"
+                             IsVisible="{Binding SelectedItem.HasLeft}" />
+                  <TextBlock Classes="dim" Text="(not on this side)" IsVisible="{Binding !SelectedItem.HasLeft}" />
+                </Panel>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Classes="mono" FontSize="16" Text="{Binding SelectedItem.DeltaText}" HorizontalAlignment="Center" />
+            <TextBlock Classes="muted small" Text="{Binding SelectedItem.PercentText}" HorizontalAlignment="Center" />
+          </StackPanel>
+          <Border Grid.Column="2" Classes="value">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="◀  Copy to left" Command="{Binding CopyToLeftCommand}" VerticalAlignment="Center" />
+              <StackPanel>
+                <TextBlock Text="Right" Foreground="{DynamicResource State.RightOnly}" FontSize="12" />
+                <Panel>
+                  <TextBlock Classes="mono" FontSize="22" Text="{Binding SelectedItem.RightFullText}" TextTrimming="CharacterEllipsis"
+                             IsVisible="{Binding SelectedItem.HasRight}" />
+                  <TextBlock Classes="dim" Text="(not on this side)" IsVisible="{Binding !SelectedItem.HasRight}" />
+                </Panel>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </Grid>
+
+        <!-- Arrays: the element table around the first difference -->
+        <DockPanel IsVisible="{Binding HasArrayDetail}" Height="200">
+          <TextBlock DockPanel.Dock="Top" Classes="muted" Text="Array elements around the first difference" Margin="0,0,0,4" />
+          <DataGrid x:Name="Detail" ItemsSource="{Binding ArrayDetail}" IsReadOnly="True" AutoGenerateColumns="False"
+                    CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="None" RowHeight="22">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Index" Width="80" Binding="{Binding Index}" x:DataType="vm:ArrayDetailRow" />
+              <DataGridTextColumn Header="Left" Width="*" Binding="{Binding Left}" x:DataType="vm:ArrayDetailRow" />
+              <DataGridTextColumn Header="Right" Width="*" Binding="{Binding Right}" x:DataType="vm:ArrayDetailRow" />
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </StackPanel>
     </Border>
 
     <!-- Aligned tree: one row per node, both values side by side -->
@@ -118,9 +189,8 @@
               CanUserResizeColumns="True"
               SelectionMode="Single"
               HeadersVisibility="Column"
-              GridLinesVisibility="Vertical"
-              RowHeight="24"
-              Margin="8,0">
+              GridLinesVisibility="None"
+              RowHeight="27">
       <DataGrid.Columns>
 
         <DataGridTemplateColumn Header="Name" Width="2*" x:DataType="vm:DiffNodeItem">
@@ -130,29 +200,37 @@
                 <Button Classes="expander" Content="{Binding ExpanderGlyph}"
                         Command="{Binding $parent[UserControl].((vm:FileCompareViewModel)DataContext).ToggleCommand}"
                         CommandParameter="{Binding}" />
-                <TextBlock Classes="cell" Text="{Binding Name}" />
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                <TextBlock Classes="muted small" Text="{Binding InlineChangesText}" VerticalAlignment="Center" Margin="8,0,0,0" />
               </StackPanel>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
 
-        <DataGridTextColumn Header="Type" Width="110" Binding="{Binding TypeText}" x:DataType="vm:DiffNodeItem" />
+        <DataGridTemplateColumn Header="Type" Width="150" x:DataType="vm:DiffNodeItem">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:DiffNodeItem">
+              <TextBlock Classes="cell mono small muted" Text="{Binding TypeText}" ToolTip.Tip="{Binding TypeText}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
 
         <DataGridTemplateColumn Header="Left" Width="3*" x:DataType="vm:DiffNodeItem">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:DiffNodeItem">
               <Panel>
-                <TextBlock Classes="cell" Text="{Binding LeftValueText}" ToolTip.Tip="{Binding LeftToolTip}" IsVisible="{Binding HasLeft}" />
-                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasLeft}" />
+                <ctl:Hatch IsVisible="{Binding !HasLeft}" />
+                <TextBlock Classes="cell mono" Text="{Binding LeftValueText}" ToolTip.Tip="{Binding LeftToolTip}" IsVisible="{Binding HasLeft}" />
               </Panel>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
 
-        <DataGridTemplateColumn Header="" Width="36" x:DataType="vm:DiffNodeItem">
+        <DataGridTemplateColumn Header="" Width="44" x:DataType="vm:DiffNodeItem">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:DiffNodeItem">
-              <TextBlock Text="{Binding StatusGlyph}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" />
+              <ctl:StateChip State="{Binding State}" Glyph="{Binding StatusGlyph}" Rollup="{Binding IsRollup}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
@@ -161,8 +239,16 @@
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:DiffNodeItem">
               <Panel>
-                <TextBlock Classes="cell" Text="{Binding RightValueText}" ToolTip.Tip="{Binding RightToolTip}" IsVisible="{Binding HasRight}" />
-                <TextBlock Classes="placeholder" Text="—" IsVisible="{Binding !HasRight}" />
+                <ctl:Hatch IsVisible="{Binding !HasRight}" />
+                <StackPanel Orientation="Horizontal" IsVisible="{Binding HasRight}">
+                  <TextBlock Classes="cell mono" Text="{Binding RightValueText}" ToolTip.Tip="{Binding RightToolTip}" />
+                  <Border Classes="badge" IsVisible="{Binding DeltaText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Classes="mono small" Text="{Binding DeltaText}" />
+                  </Border>
+                  <Border Classes="badge" IsVisible="{Binding CountDeltaText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Classes="mono small" Text="{Binding CountDeltaText}" />
+                  </Border>
+                </StackPanel>
               </Panel>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>

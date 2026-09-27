@@ -12,6 +12,7 @@ public sealed class TextDiffRowItem(LineDiffRow row, int index, bool isHunkStart
     public int Index => index;
     public bool IsHunkStart => isHunkStart;
     public LineDiffKind Kind => row.Kind;
+    public RowTint Tint => new(StateKinds.Of(row.Kind));
     public string LeftLineText => row.LeftLine?.ToString() ?? "";
     public string RightLineText => row.RightLine?.ToString() ?? "";
     public string LeftText => row.LeftText ?? "";

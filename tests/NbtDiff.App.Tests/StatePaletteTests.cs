@@ -92,4 +92,21 @@ public class StatePaletteTests
             }
         });
     }
+    [Fact]
+    public void EveryStatusOfEveryView_MapsToItsState()
+    {
+        Assert.Equal(
+            [StateKind.Pending, StateKind.Same, StateKind.ProbablyDifferent, StateKind.Different, StateKind.LeftOnly, StateKind.RightOnly, StateKind.Error],
+            new[] { RowStatus.Pending, RowStatus.Same, RowStatus.ProbablyDifferent, RowStatus.Different, RowStatus.LeftOnly, RowStatus.RightOnly, RowStatus.Error }.Select(StateKinds.Of));
+        Assert.Equal(
+            [StateKind.Same, StateKind.RightOnly, StateKind.LeftOnly, StateKind.Different, StateKind.Different, StateKind.Moved, StateKind.Moved],
+            new[] { DiffKind.Unchanged, DiffKind.Added, DiffKind.Removed, DiffKind.ValueChanged, DiffKind.TypeChanged, DiffKind.Moved, DiffKind.Renamed }.Select(StateKinds.Of));
+        Assert.Equal(
+            [StateKind.Same, StateKind.Different, StateKind.LeftOnly, StateKind.RightOnly, StateKind.Error],
+            new[] { ChunkDiffStatus.Same, ChunkDiffStatus.Different, ChunkDiffStatus.LeftOnly, ChunkDiffStatus.RightOnly, ChunkDiffStatus.Error }.Select(StateKinds.Of));
+        Assert.Equal(
+            [StateKind.None, StateKind.Different, StateKind.LeftOnly, StateKind.RightOnly],
+            new[] { LineDiffKind.Unchanged, LineDiffKind.Changed, LineDiffKind.Removed, LineDiffKind.Added }.Select(StateKinds.Of));
+        Assert.Equal(StateKind.Empty, new ChunkCellItem(0, 0).State);
+    }
 }

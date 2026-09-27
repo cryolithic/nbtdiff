@@ -45,6 +45,66 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
     public string? CountDeltaText { get; }
     /// <summary>The path as an NBT path, e.g. <c>Entities[0].NeoForgeData."naturesaura:time_alive"</c>.</summary>
     public string NbtPath => ToNbtPath(Node.Path);
+    /// <summary>Muted text after a roll-up container's name (#12): <c>4 changes</c>, or <c>2 added</c> / <c>1 removed</c> when that is all it is.</summary>
+    public string? InlineChangesText
+    {
+        get
+        {
+            if (!IsRollup) return null;
+            var kinds = TopChanges(Node).Select(n => n.Kind).ToList();
+            int n = kinds.Count;
+            if (kinds.All(k => k == DiffKind.Added)) return $"{n} added";
+            if (kinds.All(k => k == DiffKind.Removed)) return $"{n} removed";
+            return $"{ChangedDescendants} {(ChangedDescendants == 1 ? "change" : "changes")}";
+        }
+    }
+    /// <summary>The whole value (the cell text may be cut); null for a missing side.</summary>
+    public string? LeftFullText => LeftToolTip ?? LeftValueText;
+    public string? RightFullText => RightToolTip ?? RightValueText;
+    /// <summary>A changed number's relative change against the left value, e.g. <c>+5.6%</c>; null when not meaningful.</summary>
+    public string? PercentText => DeltaText is null ? null : Percent(Node.Left, Node.Right);
+    /// <summary>For the detail pane: <c>int · changed</c>.</summary>
+    public string KindText => $"{TypeText} · {(IsRollup ? "changes below" : Node.Kind switch
+    {
+        DiffKind.Unchanged => "unchanged",
+        DiffKind.Added => "only on the right",
+        DiffKind.Removed => "only on the left",
+        DiffKind.ValueChanged => "changed",
+        DiffKind.TypeChanged => "type changed",
+        DiffKind.Moved => "moved",
+        DiffKind.Renamed => "renamed",
+        _ => Node.Kind.ToString(),
+    })}";
+
+    /// <summary>The changed nodes under <paramref name="node"/> whose parent is not itself changed.</summary>
+    private static IEnumerable<DiffNode> TopChanges(DiffNode node)
+    {
+        foreach (var child in node.Children)
+        {
+            if (child.Kind != DiffKind.Unchanged) yield return child;
+            else foreach (var inner in TopChanges(child)) yield return inner;
+        }
+    }
+
+    private static string? Percent(NbtTag? left, NbtTag? right)
+    {
+        double? l = Number(left), r = Number(right);
+        if (l is not { } a || r is not { } b || a == 0) return null;
+        double p = (b - a) / Math.Abs(a) * 100;
+        if (double.IsNaN(p) || double.IsInfinity(p)) return null;
+        return (p >= 0 ? "+" : "−") + Math.Abs(p).ToString(Math.Abs(p) < 10 ? "0.0" : "0", CultureInfo.InvariantCulture) + "%";
+    }
+
+    private static double? Number(NbtTag? tag) => tag switch
+    {
+        NbtByte b => (sbyte)b.Value,
+        NbtShort s => s.Value,
+        NbtInt i => i.Value,
+        NbtLong l => l.Value,
+        NbtFloat f => f.Value,
+        NbtDouble d => d.Value,
+        _ => null,
+    };
     public string? LeftValueText { get; }
     public string? RightValueText { get; }
     public string? LeftToolTip { get; }

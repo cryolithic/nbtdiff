@@ -5,10 +5,6 @@
              x:Class="NbtDiff.App.Views.TextCompareView"
              x:DataType="vm:TextCompareViewModel">
 
-  <UserControl.Resources>
-    <conv:LineDiffKindBackgroundConverter x:Key="KindBackground" />
-  </UserControl.Resources>
-
   <UserControl.KeyBindings>
     <KeyBinding Gesture="F7" Command="{Binding PreviousHunkCommand}" />
     <KeyBinding Gesture="F8" Command="{Binding NextHunkCommand}" />
@@ -16,7 +12,7 @@
 
   <UserControl.Styles>
     <Style Selector="DataGrid#Grid DataGridRow">
-      <Setter Property="Background" Value="{ReflectionBinding Kind, Converter={StaticResource KindBackground}}" />
+      <Setter Property="Background" Value="{ReflectionBinding Tint, Converter={x:Static conv:StateBrushConverter.Instance}}" />
     </Style>
     <Style Selector="TextBlock.code">
       <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,DejaVu Sans Mono,monospace" />
@@ -34,21 +30,25 @@
   <DockPanel>
 
     <!-- Toolbar -->
-    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="6">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBlock Text="{Binding LeftPathText}" VerticalAlignment="Center" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="420" ToolTip.Tip="{Binding LeftPathText}" />
-        <TextBlock Text="↔" VerticalAlignment="Center" />
-        <TextBlock Text="{Binding RightPathText}" VerticalAlignment="Center" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="420" ToolTip.Tip="{Binding RightPathText}" />
-        <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Margin="6,2" />
-        <Button Content="◀ Previous hunk (F7)" Command="{Binding PreviousHunkCommand}" />
-        <Button Content="Next hunk (F8) ▶" Command="{Binding NextHunkCommand}" />
+    <Border DockPanel.Dock="Top" Classes="bar" Padding="10,8">
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="↑  Previous hunk" Command="{Binding PreviousHunkCommand}" ToolTip.Tip="Previous hunk (F7)" />
+          <Button Content="↓  Next hunk" Command="{Binding NextHunkCommand}" ToolTip.Tip="Next hunk (F8)" />
+          <Border Classes="divider" />
+          <TextBlock Classes="muted mono small" Text="{Binding LeftPathText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="560" ToolTip.Tip="{Binding LeftPathText}" />
+          <TextBlock Classes="dim" Text="↔" VerticalAlignment="Center" />
+          <TextBlock Classes="muted mono small" Text="{Binding RightPathText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="560" ToolTip.Tip="{Binding RightPathText}" />
+        </StackPanel>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" />
+        <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" />
       </StackPanel>
-      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
-      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" />
-    </StackPanel>
+    </Border>
 
     <!-- Status bar -->
-    <TextBlock DockPanel.Dock="Bottom" Margin="8,4,8,6" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis" />
+    <Border DockPanel.Dock="Bottom" Classes="statusbar">
+      <TextBlock Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis" />
+    </Border>
 
     <DataGrid x:Name="Grid"
               ItemsSource="{Binding Rows}"

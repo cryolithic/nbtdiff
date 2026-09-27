@@ -782,7 +782,7 @@ public class ViewModelGapTests
         Assert.Equal((0, 0), (vm.Grid.Selected!.X, vm.Grid.Selected.Z));
     }
 
-    // ── ChunkCellItem / TextDiffRowItem / LegendStatus / RecentPair ─────────────────────────
+    // ── ChunkCellItem / TextDiffRowItem ─────────────────────────
 
     [Fact]
     public void ChunkCellItem_Display()
@@ -839,16 +839,6 @@ public class ViewModelGapTests
         Check(LineDiffKind.Changed, 1, "a", 1, "b", "≠");
         Check(LineDiffKind.Removed, 1, "a", null, null, "−");
         Check(LineDiffKind.Added, null, null, 1, "b", "+");
-    }
-
-    [Fact]
-    public void LegendStatus_MatchesChunkDiffStatus()
-    {
-        Assert.Equal(ChunkDiffStatus.Same, (ChunkDiffStatus)LegendStatus.Same);
-        Assert.Equal(ChunkDiffStatus.Different, (ChunkDiffStatus)LegendStatus.Different);
-        Assert.Equal(ChunkDiffStatus.LeftOnly, (ChunkDiffStatus)LegendStatus.LeftOnly);
-        Assert.Equal(ChunkDiffStatus.RightOnly, (ChunkDiffStatus)LegendStatus.RightOnly);
-        Assert.Equal(ChunkDiffStatus.Error, (ChunkDiffStatus)LegendStatus.Error);
     }
 
     // ── Diff sources ─────────────────────────────────────────────────────────────────────────

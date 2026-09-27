@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using NbtDiff.App.ViewModels;
@@ -19,6 +20,11 @@ public partial class FileCompareView : UserControl
         Grid.SelectionChanged += OnGridSelectionChanged;
         // F7/F8 key bindings only fire while focus is inside this view.
         Loaded += (_, _) => Grid.Focus();
+        CopyPath.Click += async (_, _) =>
+        {
+            if (Vm?.SelectedItem is { } item && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                await clipboard.SetTextAsync(item.NbtPath);
+        };
     }
 
     private FileCompareViewModel? Vm => DataContext as FileCompareViewModel;

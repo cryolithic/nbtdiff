@@ -17,8 +17,6 @@ public class ServicesAndConvertersTests
     private static object? C(IValueConverter c, object? value, object? parameter = null) =>
         HeadlessUi.Run(() => c.Convert(value, typeof(object), parameter, CultureInfo.InvariantCulture));
 
-    private static void AssertColor(object? result, Color expected) =>
-        Assert.Equal(expected, HeadlessUi.Run(() => ((SolidColorBrush)result!).Color));
 
     // ── SettingsStore ──────────────────────────────────────────────────────────
 
@@ -292,21 +290,6 @@ public class ServicesAndConvertersTests
     // ── Converters ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public void StatusBackgroundConverter_EveryRowStatusAndDefault()
-    {
-        var c = new StatusBackgroundConverter();
-        AssertColor(C(c, RowStatus.Different), Color.FromArgb(0x40, 0xE0, 0x40, 0x40));
-        AssertColor(C(c, RowStatus.ProbablyDifferent), Color.FromArgb(0x22, 0xE0, 0x40, 0x40));
-        AssertColor(C(c, RowStatus.LeftOnly), Color.FromArgb(0x38, 0x30, 0x90, 0xF0));
-        AssertColor(C(c, RowStatus.RightOnly), Color.FromArgb(0x38, 0xA0, 0x50, 0xE0));
-        AssertColor(C(c, RowStatus.Error), Color.FromArgb(0x30, 0x80, 0x80, 0x80));
-        Assert.Same(Brushes.Transparent, C(c, RowStatus.Same));
-        Assert.Same(Brushes.Transparent, C(c, RowStatus.Pending));
-        Assert.Same(Brushes.Transparent, C(c, null));
-        Assert.Same(Brushes.Transparent, C(c, "not a status"));
-    }
-
-    [Fact]
     public void StatusDecorationConverter_OnlyErrorGetsStrikethrough()
     {
         var c = new StatusDecorationConverter();
@@ -318,20 +301,6 @@ public class ServicesAndConvertersTests
         Assert.Null(C(c, RowStatus.LeftOnly));
         Assert.Null(C(c, RowStatus.RightOnly));
         Assert.Null(C(c, null));
-    }
-
-    [Fact]
-    public void StatusOpacityConverter_EveryRowStatusAndDefault()
-    {
-        var c = new StatusOpacityConverter();
-        Assert.Equal(0.55, (double)C(c, RowStatus.ProbablyDifferent)!);
-        Assert.Equal(0.4, (double)C(c, RowStatus.Pending)!);
-        Assert.Equal(1.0, (double)C(c, RowStatus.Same)!);
-        Assert.Equal(1.0, (double)C(c, RowStatus.Different)!);
-        Assert.Equal(1.0, (double)C(c, RowStatus.LeftOnly)!);
-        Assert.Equal(1.0, (double)C(c, RowStatus.RightOnly)!);
-        Assert.Equal(1.0, (double)C(c, RowStatus.Error)!);
-        Assert.Equal(1.0, (double)C(c, null)!);
     }
 
     [Fact]
@@ -365,69 +334,14 @@ public class ServicesAndConvertersTests
     }
 
     [Fact]
-    public void DiffKindBackgroundConverter_EveryDiffKindAndDefault()
-    {
-        var c = new DiffKindBackgroundConverter();
-        AssertColor(C(c, DiffKind.ValueChanged), Color.FromArgb(0x40, 0xE0, 0x40, 0x40));
-        AssertColor(C(c, DiffKind.TypeChanged), Color.FromArgb(0x40, 0xE0, 0x40, 0x40));
-        AssertColor(C(c, DiffKind.Removed), Color.FromArgb(0x38, 0x30, 0x90, 0xF0));
-        AssertColor(C(c, DiffKind.Added), Color.FromArgb(0x38, 0xA0, 0x50, 0xE0));
-        AssertColor(C(c, DiffKind.Moved), Color.FromArgb(0x38, 0xE0, 0xB0, 0x30));
-        AssertColor(C(c, DiffKind.Renamed), Color.FromArgb(0x38, 0xE0, 0xB0, 0x30));
-        Assert.Same(Brushes.Transparent, C(c, DiffKind.Unchanged));
-        Assert.Same(Brushes.Transparent, C(c, null));
-        Assert.Same(Brushes.Transparent, C(c, "x"));
-    }
-
-    [Fact]
-    public void ChunkStatusBrushConverter_EveryChunkDiffStatusAndDefault()
-    {
-        var c = new ChunkStatusBrushConverter();
-        AssertColor(C(c, ChunkDiffStatus.Same), Color.FromArgb(0x60, 0x60, 0xB0, 0x60));
-        AssertColor(C(c, ChunkDiffStatus.Different), Color.FromArgb(0xE0, 0xE0, 0x40, 0x40));
-        AssertColor(C(c, ChunkDiffStatus.LeftOnly), Color.FromArgb(0xD0, 0x30, 0x90, 0xF0));
-        AssertColor(C(c, ChunkDiffStatus.RightOnly), Color.FromArgb(0xD0, 0xA0, 0x50, 0xE0));
-        AssertColor(C(c, ChunkDiffStatus.Error), Color.FromArgb(0xE0, 0xF0, 0xA0, 0x20));
-        AssertColor(C(c, null), Color.FromArgb(0x10, 0x80, 0x80, 0x80));
-        AssertColor(C(c, "x"), Color.FromArgb(0x10, 0x80, 0x80, 0x80));
-    }
-
-    [Fact]
-    public void LineDiffKindBackgroundConverter_EveryLineDiffKindAndDefault()
-    {
-        var c = new LineDiffKindBackgroundConverter();
-        AssertColor(C(c, LineDiffKind.Changed), Color.FromArgb(0x40, 0xE0, 0x40, 0x40));
-        AssertColor(C(c, LineDiffKind.Removed), Color.FromArgb(0x38, 0x30, 0x90, 0xF0));
-        AssertColor(C(c, LineDiffKind.Added), Color.FromArgb(0x38, 0xA0, 0x50, 0xE0));
-        Assert.Same(Brushes.Transparent, C(c, LineDiffKind.Unchanged));
-        Assert.Same(Brushes.Transparent, C(c, null));
-        Assert.Same(Brushes.Transparent, C(c, "x"));
-    }
-
-    [Fact]
-    public void DifferentRowBackgroundConverter_TrueOnlyGetsRed()
-    {
-        var c = new DifferentRowBackgroundConverter();
-        AssertColor(C(c, true), Color.FromArgb(0x40, 0xE0, 0x40, 0x40));
-        Assert.Same(Brushes.Transparent, C(c, false));
-        Assert.Same(Brushes.Transparent, C(c, null));
-        Assert.Same(Brushes.Transparent, C(c, "true"));
-    }
-
-    [Fact]
     public void ConvertBack_ThrowsForEveryConverter()
     {
         IValueConverter[] converters =
         [
-            new StatusBackgroundConverter(),
             new StatusDecorationConverter(),
-            new StatusOpacityConverter(),
             new DepthToMarginConverter(),
             new EnumEqualsConverter(),
-            new DiffKindBackgroundConverter(),
-            new ChunkStatusBrushConverter(),
-            new LineDiffKindBackgroundConverter(),
-            new DifferentRowBackgroundConverter(),
+            StateBrushConverter.Instance,
         ];
         foreach (var c in converters)
             Assert.Throws<NotSupportedException>(() => c.ConvertBack(null, typeof(object), null, CultureInfo.InvariantCulture));

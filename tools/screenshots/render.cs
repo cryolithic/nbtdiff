@@ -70,6 +70,8 @@ Snap("region");
 region.OpenSelectedCommand.Execute(null);
 var chunk = (FileCompareViewModel)shell.Current!;
 Settle(chunk.LoadCompletion);
+chunk.SelectedItem = chunk.Tree.Rows.FirstOrDefault(i => i.DeltaText is not null) ?? chunk.SelectedItem;
+Settle();
 Snap("tag");
 
 // FTB quest progress (SNBT) tag diff.
