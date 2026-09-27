@@ -115,10 +115,13 @@ In the tag view, `◀ Copy to left` / `Copy to right ▶` copy the selected row 
 whole subtree, into an existing or a missing side alike) from one side to the other, and the diff
 refreshes immediately. Edits stay in memory until `Ctrl+S` writes each edited side back:
 
-- `.dat` and `.snbt` files are rewritten in their original compression. The first save of a file
-  keeps the original as `<file>.bak`.
+- `.dat` and `.snbt` files are rewritten in their original compression. The new file is written
+  beside the old one and swapped in only once it is complete, so a failed or interrupted save
+  leaves the original as it was.
 - A chunk is re-appended to its region file the way Minecraft itself saves; the chunk keeps its
-  compression scheme.
+  compression scheme, and the region header is only pointed at it once it is on disk.
+- The first save of any file or region keeps the untouched original as `<file>.bak`
+  (`r.0.0.mca.bak`, `level.dat.bak`, …). Later saves leave that backup alone.
 - Bedrock files are compared but not written.
 
 Going Back, stepping to another chunk, or closing the window with unsaved copies asks before

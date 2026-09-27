@@ -122,6 +122,7 @@ public sealed class NbtDocument
     /// Writes <paramref name="root"/> back to <see cref="Path"/> in the format and compression the
     /// file was loaded with (SNBT files are rewritten pretty-printed). The first save of a path
     /// copies the pre-nbtdiff file to <c>&lt;path&gt;.bak</c>; later saves leave that backup alone.
+    /// The file is replaced atomically, so a failed save leaves it as it was.
     /// Bedrock variants are refused rather than risk corrupting their headers.
     /// </summary>
     public LoadResult<NbtDocument> Save(NbtCompound root)
@@ -130,16 +131,16 @@ public sealed class NbtDocument
             return LoadResult<NbtDocument>.Fail($"Saving {Format.Format} files is not supported yet; write the change by hand instead");
         return LoadResult<NbtDocument>.Try($"Save {Path}", () =>
         {
-            if (File.Exists(Path) && !File.Exists(Path + ".bak"))
-                File.Copy(Path, Path + ".bak");
+            SafeFile.BackupOnce(Path);
             if (Format.Format == NbtFormat.Snbt)
             {
-                File.WriteAllText(Path, SnbtWriter.Write(root, SnbtOptions.Pretty));
+                var text = System.Text.Encoding.UTF8.GetBytes(SnbtWriter.Write(root, SnbtOptions.Pretty));
+                SafeFile.WriteAtomic(Path, s => s.Write(text));
             }
             else
             {
                 var file = new NbtFile(root) { BigEndian = Format.BigEndian };
-                file.SaveToFile(Path, Format.Compression);
+                SafeFile.WriteAtomic(Path, s => file.SaveToStream(s, Format.Compression));
             }
             return this;
         });

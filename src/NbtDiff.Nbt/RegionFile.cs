@@ -178,6 +178,7 @@ public sealed class RegionFile : IDisposable
             if (sectorCount > byte.MaxValue)
                 throw new IOException($"the compressed chunk is {payload.Length:N0} bytes, too large for {byte.MaxValue} sectors");
 
+            SafeFile.BackupOnce(Path);
             using var handle = File.OpenHandle(Path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read | FileShare.Write);
             long dataStart = Math.Max((RandomAccess.GetLength(handle) + SectorSize - 1) / SectorSize * SectorSize, HeaderSize);
             var sector = new byte[sectorCount * SectorSize];
@@ -185,6 +186,10 @@ public sealed class RegionFile : IDisposable
             sector[4] = scheme;
             payload.CopyTo(sector, ChunkRef.PrefixSize);
             RandomAccess.Write(handle, sector, dataStart);
+            // The chunk must be on disk before the header points at it. A crash before the location
+            // entry is written leaves the old entry, and with it the old chunk, intact (appending never
+            // overwrites live sectors); the entry itself is one aligned 4-byte write.
+            RandomAccess.FlushToDisk(handle);
 
             int slot = z * RegionCoords.ChunksPerAxis + x;
             Span<byte> entry = stackalloc byte[4];
@@ -192,8 +197,7 @@ public sealed class RegionFile : IDisposable
             RandomAccess.Write(handle, entry, slot * 4);
             BinaryPrimitives.WriteUInt32BigEndian(entry, now);
             RandomAccess.Write(handle, entry, SectorSize + slot * 4);
-            using (var stream = new FileStream(handle, FileAccess.ReadWrite))
-                stream.Flush(flushToDisk: true);
+            RandomAccess.FlushToDisk(handle);
 
             return UpdateSlot(x, z, dataStart, sectorCount, now);
         }
@@ -206,7 +210,9 @@ public sealed class RegionFile : IDisposable
             if (existing.WorldCoords is not { } coords)
                 throw new IOException($"external chunk, but region file name '{System.IO.Path.GetFileName(Path)}' has no region coordinates to locate the .mcc file");
             string mcc = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path) ?? "", $"c.{coords.X}.{coords.Z}.mcc");
-            File.WriteAllBytes(mcc, payload);
+            SafeFile.BackupOnce(Path);
+            SafeFile.BackupOnce(mcc);
+            SafeFile.WriteAtomic(mcc, s => s.Write(payload));
 
             uint now = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             using var handle = File.OpenHandle(Path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read | FileShare.Write);
