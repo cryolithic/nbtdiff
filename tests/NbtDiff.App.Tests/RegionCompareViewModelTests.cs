@@ -227,4 +227,85 @@ public class RegionCompareViewModelTests
         using var reopened = RegionFile.Open(Region(l.Path)).ValueOrThrow();
         Assert.Null(reopened[1, 0]);
     }
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        var until = DateTime.UtcNow.AddSeconds(30);
+        while (!condition() && DateTime.UtcNow < until) await Task.Delay(10);
+        Assert.True(condition(), "timed out");
+    }
+
+    [Fact]
+    public async Task LegendFilters_DimCells_AndNavigationSkipsThem()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        Base().Write(l.Path);
+        Base().Mutate(m => m.Chunk(0, 0, 3, 1).SetPath("InhabitedTime", 999L)).Write(r.Path);
+        using var vm = await Loaded(Region(l.Path), Region(r.Path));
+
+        vm.Grid.ShowSame = false;
+        Assert.All(vm.Grid.Cells.Where(c => c.Status == ChunkDiffStatus.Same), c => Assert.True(c.IsDimmed));
+        Assert.False(vm.Grid[3, 1].IsDimmed);
+        Assert.False(vm.Grid[31, 31].IsDimmed);                        // empty cells are never dimmed
+
+        // From (3, 1) moving left crosses dimmed same chunks and stops on the first undimmed cell.
+        vm.SelectCommand.Execute(vm.Grid[3, 1]);
+        vm.MoveCommand.Execute("left");
+        Assert.False(vm.Grid.Selected!.IsDimmed);
+
+        vm.Grid.ShowSame = true;
+        Assert.DoesNotContain(vm.Grid.Cells, c => c.IsDimmed);
+    }
+
+    [Fact]
+    public async Task PreviousNextChanged_VisitChangedChunksInOrder_SkippingFilteredStates()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        Base().Write(l.Path);
+        Base().Mutate(m => m.Chunk(0, 0, 3, 1).SetPath("InhabitedTime", 999L)).Mutate(m => m.Chunk(0, 0, 5, 1).SetPath("InhabitedTime", 7L)).Write(r.Path);
+        using var vm = await Loaded(Region(l.Path), Region(r.Path));
+        Assert.Same(vm.Grid[3, 1], vm.Grid.Selected);
+        vm.NextChangedCommand.Execute(null);
+        Assert.Same(vm.Grid[5, 1], vm.Grid.Selected);
+        vm.NextChangedCommand.Execute(null);                            // no more: stays
+        Assert.Same(vm.Grid[5, 1], vm.Grid.Selected);
+        vm.PreviousChangedCommand.Execute(null);
+        Assert.Same(vm.Grid[3, 1], vm.Grid.Selected);
+
+        vm.Grid.ShowDifferent = false;
+        Assert.False(vm.Grid.StepChanged(+1));                           // every changed chunk is filtered out
+    }
+
+    [Fact]
+    public async Task SelectionPanel_ShowsCoordinates_AndSummarisesTheChangedTagsInTheBackground()
+    {
+        using var l = new TempDir();
+        using var r = new TempDir();
+        new WorldBuilder(seed: 42).WithRegion(-1, 1, chunks: 10).Write(l.Path);
+        new WorldBuilder(seed: 42).WithRegion(-1, 1, chunks: 10).Mutate(m => m.Chunk(-1, 1, 2, 0).SetPath("InhabitedTime", 999L)).Write(r.Path);
+        string Rel(string dir) => Path.Combine(dir, "region", "r.-1.1.mca");
+        using var vm = await Loaded(Rel(l.Path), Rel(r.Path));
+
+        Assert.Same(vm.Grid[2, 0], vm.Grid.Selected);
+        Assert.Equal("(2, 0)", vm.SelectedTitle);
+        Assert.Equal(StateKind.Different, vm.SelectedState);
+        Assert.Equal("Different", vm.SelectedStateText);
+        Assert.Equal("(−30, 32)", vm.WorldChunkText);
+        Assert.Equal("x −480…−465, z 512…527", vm.BlockRangeText);
+
+        await WaitFor(() => vm.ChangedTagsText != "…");
+        Assert.Equal("1", vm.ChangedTagsText);
+        var change = Assert.Single(vm.SelectedChanges);
+        Assert.Equal("InhabitedTime", change.Path);
+        Assert.Equal("999L", change.Right);
+        long before = long.Parse(change.Left!.TrimEnd('L'));
+        Assert.Equal(999 - before >= 0 ? $"+{999 - before}" : $"−{before - 999}", change.Delta);
+
+        vm.SelectCommand.Execute(vm.Grid.Cells.First(c => c.Status == ChunkDiffStatus.Same));
+        Assert.Equal("0", vm.ChangedTagsText);
+        Assert.Empty(vm.SelectedChanges);
+        vm.SelectCommand.Execute(vm.Grid[2, 0]);                         // cached: no wait
+        Assert.Equal("1", vm.ChangedTagsText);
+    }
 }

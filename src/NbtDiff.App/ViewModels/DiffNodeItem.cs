@@ -39,6 +39,12 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
     public bool IsArray => Node.Left is NbtByteArray or NbtIntArray or NbtLongArray || Node.Right is NbtByteArray or NbtIntArray or NbtLongArray;
 
     public string TypeText { get; }
+    /// <summary>Right minus left for a changed number, e.g. <c>+400</c> or <c>−0.5</c>; null otherwise (#12).</summary>
+    public string? DeltaText { get; }
+    /// <summary>Entry-count change of a compound or list whose sizes differ, e.g. <c>+4</c>; null otherwise (#7, #12).</summary>
+    public string? CountDeltaText { get; }
+    /// <summary>The path as an NBT path, e.g. <c>Entities[0].NeoForgeData."naturesaura:time_alive"</c>.</summary>
+    public string NbtPath => ToNbtPath(Node.Path);
     public string? LeftValueText { get; }
     public string? RightValueText { get; }
     public string? LeftToolTip { get; }
@@ -71,6 +77,13 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
         Node = node;
         Parent = parent;
         TypeText = TypeDescription(node);
+        DeltaText = node.Kind == DiffKind.ValueChanged ? Delta(node.Left, node.Right) : null;
+        CountDeltaText = (node.Left, node.Right) switch
+        {
+            (NbtCompound l, NbtCompound r) when l.Count != r.Count => Signed(r.Count - l.Count),
+            (NbtList l, NbtList r) when l.Count != r.Count => Signed(r.Count - l.Count),
+            _ => null,
+        };
         (LeftValueText, LeftToolTip) = ValueText(node.Left, node.Array);
         (RightValueText, RightToolTip) = ValueText(node.Right, node.Array);
         if (node.Name.StartsWith('['))
@@ -123,6 +136,42 @@ public sealed partial class DiffNodeItem : ObservableObject, IFlatTreeNode<DiffN
         foreach (var c in _children)
             foreach (var d in c.Descendants())
                 yield return d;
+    }
+
+    /// <summary>Right minus left when both sides are the same numeric type; null otherwise.</summary>
+    public static string? Delta(NbtTag? left, NbtTag? right) => (left, right) switch
+    {
+        (NbtByte l, NbtByte r) => Signed((sbyte)r.Value - (sbyte)l.Value),
+        (NbtShort l, NbtShort r) => Signed(r.Value - l.Value),
+        (NbtInt l, NbtInt r) => Signed((long)r.Value - l.Value),
+        (NbtLong l, NbtLong r) => Signed(unchecked(r.Value - l.Value)),
+        (NbtFloat l, NbtFloat r) => Signed((double)r.Value - l.Value),
+        (NbtDouble l, NbtDouble r) => Signed(r.Value - l.Value),
+        _ => null,
+    };
+
+    private static string Signed(long v) => v >= 0 ? "+" + v.ToString(CultureInfo.InvariantCulture) : "−" + (-(decimal)v).ToString(CultureInfo.InvariantCulture);
+
+    private static string? Signed(double v)
+    {
+        if (double.IsNaN(v) || double.IsInfinity(v)) return null;
+        string text = Math.Abs(v).ToString("0.######", CultureInfo.InvariantCulture);
+        if (text == "0") text = Math.Abs(v).ToString("G3", CultureInfo.InvariantCulture);
+        return (v >= 0 ? "+" : "−") + text;
+    }
+
+    /// <summary><c>Entities/[0]/NeoForgeData/naturesaura:time_alive</c> → <c>Entities[0].NeoForgeData."naturesaura:time_alive"</c>.</summary>
+    public static string ToNbtPath(string path)
+    {
+        if (path.Length == 0) return "";
+        var sb = new System.Text.StringBuilder();
+        foreach (var segment in path.Split('/'))
+        {
+            if (segment.StartsWith('[')) { sb.Append(segment); continue; }
+            if (sb.Length > 0) sb.Append('.');
+            sb.Append(segment.All(SnbtParser.IsUnquotedChar) && segment.Length > 0 ? segment : "\"" + segment.Replace("\"", "\\\"") + "\"");
+        }
+        return sb.ToString();
     }
 
     public static string Glyph(DiffKind kind) => kind switch

@@ -5,80 +5,194 @@
              x:Class="NbtDiff.App.Views.RegionCompareView"
              x:DataType="vm:RegionCompareViewModel">
 
-  <UserControl.Resources>
-    <conv:ChunkStatusBrushConverter x:Key="ChunkBrush" />
-  </UserControl.Resources>
-
   <UserControl.Styles>
     <Style Selector="Border.chunk">
       <Setter Property="Width" Value="20" />
       <Setter Property="Height" Value="20" />
       <Setter Property="Margin" Value="1" />
-      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="CornerRadius" Value="3" />
       <Setter Property="BorderThickness" Value="2" />
       <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Border.chunk.selected">
-      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource App.Text}" />
     </Style>
-    <Style Selector="Border.legend">
-      <Setter Property="Width" Value="14" />
-      <Setter Property="Height" Value="14" />
+    <Style Selector="Border.chunk.dimmed">
+      <Setter Property="Opacity" Value="0.22" />
+    </Style>
+    <Style Selector="Border.swatch">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
       <Setter Property="CornerRadius" Value="2" />
       <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="Margin" Value="8,0,4,0" />
     </Style>
-    <Style Selector="TextBlock.legend">
+    <Style Selector="TextBlock.axis">
+      <Setter Property="FontSize" Value="9" />
+      <Setter Property="Foreground" Value="{DynamicResource App.TextDim}" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="{DynamicResource App.TextMuted}" />
+      <Setter Property="Width" Value="140" />
+    </Style>
+    <Style Selector="Border.keycap">
+      <Setter Property="BorderBrush" Value="{DynamicResource App.TextDim}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="Margin" Value="8,0,0,0" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
   </UserControl.Styles>
 
-  <DockPanel>
+  <Grid ColumnDefinitions="Auto,*" Margin="16">
 
-    <!-- Header -->
-    <StackPanel DockPanel.Dock="Top" Margin="8,8,8,4" Spacing="4">
-      <Grid ColumnDefinitions="*,24,*">
-        <TextBlock Grid.Column="0" Text="{Binding LeftPathText}" Opacity="0.7" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding LeftPathText}" />
-        <TextBlock Grid.Column="1" Text="↔" HorizontalAlignment="Center" Opacity="0.7" />
-        <TextBlock Grid.Column="2" Text="{Binding RightPathText}" Opacity="0.7" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RightPathText}" />
-      </Grid>
-      <TextBlock Text="{Binding HeaderText}" FontWeight="SemiBold" />
-      <StackPanel Orientation="Horizontal">
-        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.Same}, Converter={StaticResource ChunkBrush}}" Margin="0,0,4,0" /><TextBlock Classes="legend" Text="same" />
-        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.Different}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="different" />
-        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.LeftOnly}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="left only" />
-        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.RightOnly}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="right only" />
-        <Border Classes="legend" Background="{Binding Source={x:Static vm:LegendStatus.Error}, Converter={StaticResource ChunkBrush}}" /><TextBlock Classes="legend" Text="error" />
-        <TextBlock Classes="legend" Text="   Arrow keys move · Enter or double-click opens the chunk" Opacity="0.6" />
+    <!-- Left: legend filters, the 32×32 grid with axes, hint -->
+    <DockPanel Grid.Column="0">
+      <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,12">
+          <ToggleButton Classes="legend" IsChecked="{Binding Grid.ShowDifferent}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Classes="swatch" Background="{DynamicResource State.Different}" />
+              <TextBlock Text="Different" />
+              <TextBlock Classes="dim mono small" Text="{Binding Grid.Different}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="legend" IsChecked="{Binding Grid.ShowLeftOnly}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Classes="swatch" Background="{DynamicResource State.LeftOnly}" />
+              <TextBlock Text="Left only" />
+              <TextBlock Classes="dim mono small" Text="{Binding Grid.LeftOnly}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="legend" IsChecked="{Binding Grid.ShowRightOnly}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Classes="swatch" Background="{DynamicResource State.RightOnly}" />
+              <TextBlock Text="Right only" />
+              <TextBlock Classes="dim mono small" Text="{Binding Grid.RightOnly}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="legend" IsChecked="{Binding Grid.ShowSame}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Classes="swatch" Background="{DynamicResource State.Same}" />
+              <TextBlock Text="Same" />
+              <TextBlock Classes="dim mono small" Text="{Binding Grid.Same}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Classes="legend" IsChecked="{Binding Grid.ShowErrors}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Classes="swatch" Background="{DynamicResource State.Error}" />
+              <TextBlock Text="Error" />
+              <TextBlock Classes="dim mono small" Text="{Binding Grid.Errors}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+      </WrapPanel>
+      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,6">
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
+        <TextBlock Classes="error mono" Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" />
+        <TextBlock Classes="muted small" Text="{Binding HeaderNote}" TextWrapping="Wrap" MaxWidth="700" />
       </StackPanel>
-      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="4" />
-      <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" Foreground="#E04040" TextWrapping="Wrap" FontFamily="Consolas,monospace" />
-    </StackPanel>
+      <TextBlock DockPanel.Dock="Bottom" Classes="dim small" Margin="28,8,0,0"
+                 Text="Local chunk coordinates, 0–31. Arrow keys move · Enter or double-click opens" />
 
-    <!-- Selection / open -->
-    <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,6">
-      <Button DockPanel.Dock="Right" Content="Open chunk" Command="{Binding OpenSelectedCommand}" Classes="accent" />
-      <TextBlock Text="{Binding Grid.SelectionText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      <!-- x grows to the right, z grows downward -->
+      <Border x:Name="GridHost" Focusable="True" Background="Transparent">
+        <Viewbox Stretch="Uniform" StretchDirection="Both">
+          <Grid ColumnDefinitions="26,704" RowDefinitions="16,704">
+            <Canvas Grid.Column="1" Grid.Row="0">
+              <TextBlock Classes="axis" Canvas.Left="0" Text="0" />
+              <TextBlock Classes="axis" Canvas.Left="176" Text="8" />
+              <TextBlock Classes="axis" Canvas.Left="352" Text="16" />
+              <TextBlock Classes="axis" Canvas.Left="528" Text="24" />
+              <TextBlock Classes="axis" Canvas.Left="682" Text="31" />
+            </Canvas>
+            <Canvas Grid.Column="0" Grid.Row="1" Margin="-2,0,4,0">
+              <TextBlock Classes="axis" Canvas.Top="3" Text="0" Width="22" TextAlignment="Right" />
+              <TextBlock Classes="axis" Canvas.Top="179" Text="8" Width="22" TextAlignment="Right" />
+              <TextBlock Classes="axis" Canvas.Top="355" Text="16" Width="22" TextAlignment="Right" />
+              <TextBlock Classes="axis" Canvas.Top="531" Text="24" Width="22" TextAlignment="Right" />
+              <TextBlock Classes="axis" Canvas.Top="685" Text="31" Width="22" TextAlignment="Right" />
+            </Canvas>
+            <ItemsControl x:Name="Cells" Grid.Column="1" Grid.Row="1" ItemsSource="{Binding Grid.Cells}" Width="704" Height="704">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="32" Rows="32" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChunkCellItem">
+                  <Border Classes="chunk" Classes.selected="{Binding IsSelected}" Classes.dimmed="{Binding IsDimmed}"
+                          Background="{Binding State, Converter={x:Static conv:StateBrushConverter.Instance}}"
+                          ToolTip.Tip="{Binding ToolTipText}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+        </Viewbox>
+      </Border>
     </DockPanel>
 
-    <!-- 32×32 grid; x grows to the right, z grows downward -->
-    <Border x:Name="GridHost" Focusable="True" Margin="8,0" Background="Transparent">
-      <Viewbox Stretch="Uniform" StretchDirection="Both">
-        <ItemsControl x:Name="Cells" ItemsSource="{Binding Grid.Cells}" Width="704" Height="704">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <UniformGrid Columns="32" Rows="32" />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ChunkCellItem">
-              <Border Classes="chunk" Classes.selected="{Binding IsSelected}"
-                      Background="{Binding Status, Converter={StaticResource ChunkBrush}}"
-                      ToolTip.Tip="{Binding ToolTipText}" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </Viewbox>
+    <!-- Right: the selected chunk -->
+    <Border Grid.Column="1" Classes="panel" Margin="20,0,0,0" MinWidth="360">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Spacing="10">
+          <Button Classes="primary" Command="{Binding OpenSelectedCommand}" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center" Height="44" ToolTip.Tip="Open the chunk's tag diff">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Open chunk" VerticalAlignment="Center" />
+              <Border Classes="keycap"><TextBlock Text="Enter" FontSize="10" /></Border>
+            </StackPanel>
+          </Button>
+          <Grid ColumnDefinitions="*,10,*">
+            <Button Grid.Column="0" Content="‹  Previous changed" Command="{Binding PreviousChangedCommand}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+            <Button Grid.Column="2" Content="Next changed  ›" Command="{Binding NextChangedCommand}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+          </Grid>
+        </StackPanel>
+
+        <StackPanel Spacing="14" IsVisible="{Binding HasSelection}">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="muted" Text="Selected chunk" />
+            <StackPanel Orientation="Horizontal" Spacing="14">
+              <TextBlock Classes="mono" FontSize="30" Text="{Binding SelectedTitle}" />
+              <Border CornerRadius="10" Padding="10,2" VerticalAlignment="Center"
+                      Background="{Binding SelectedState, Converter={x:Static conv:StateBrushConverter.Instance}, ConverterParameter=Tint}">
+                <TextBlock Text="{Binding SelectedStateText}" FontWeight="SemiBold"
+                           Foreground="{Binding SelectedState, Converter={x:Static conv:StateBrushConverter.Instance}}" />
+              </Border>
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal"><TextBlock Classes="label" Text="World chunk" /><TextBlock Classes="mono" Text="{Binding WorldChunkText}" /></StackPanel>
+            <StackPanel Orientation="Horizontal"><TextBlock Classes="label" Text="Block range" /><TextBlock Classes="mono" Text="{Binding BlockRangeText}" /></StackPanel>
+            <StackPanel Orientation="Horizontal"><TextBlock Classes="label" Text="Tags changed" /><TextBlock Classes="mono" Text="{Binding ChangedTagsText}" /></StackPanel>
+          </StackPanel>
+          <Border Height="1" Background="{DynamicResource App.Divider}" />
+          <StackPanel Spacing="8">
+            <TextBlock Classes="muted" Text="Changes" />
+            <ItemsControl ItemsSource="{Binding SelectedChanges}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChunkChange">
+                  <Border Background="{DynamicResource App.Background}" BorderBrush="{DynamicResource App.Divider}" BorderThickness="1"
+                          CornerRadius="6" Padding="12,8" Margin="0,0,0,6">
+                    <StackPanel Spacing="6">
+                      <TextBlock Classes="mono" Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="mono" Text="{Binding Left}" Foreground="{DynamicResource State.LeftOnly}" />
+                        <TextBlock Classes="dim" Text="→" />
+                        <TextBlock Classes="mono" Text="{Binding Right}" Foreground="{DynamicResource State.LeftOnly}" />
+                        <Border Classes="badge" IsVisible="{Binding Delta, Converter={x:Static ObjectConverters.IsNotNull}}">
+                          <TextBlock Classes="mono small" Text="{Binding Delta}" />
+                        </Border>
+                      </StackPanel>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="muted small" Text="{Binding MoreChangesText}" />
+          </StackPanel>
+        </StackPanel>
+      </DockPanel>
     </Border>
-  </DockPanel>
+  </Grid>
 </UserControl>

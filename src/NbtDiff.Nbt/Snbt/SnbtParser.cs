@@ -271,7 +271,8 @@ public sealed partial class SnbtParser
         return _text[start.._pos];
     }
 
-    internal static bool IsUnquotedChar(char c) =>
+    /// <summary>True for characters allowed in an unquoted SNBT string or key.</summary>
+    public static bool IsUnquotedChar(char c) =>
         c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '_' or '-' or '.' or '+';
 
     private bool AtEnd => _pos >= _text.Length;

@@ -134,7 +134,12 @@
     <Setter Property="CornerRadius" Value="14" />
     <Setter Property="Padding" Value="10,4" />
   </Style>
+  <Style Selector="ToggleButton.legend:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.legend:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource App.Control}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource App.ControlBorder}" />
+    <Setter Property="Foreground" Value="{DynamicResource App.Text}" />
+  </Style>
   <Style Selector="ToggleButton.legend:unchecked">
-    <Setter Property="Opacity" Value="0.5" />
+    <Setter Property="Opacity" Value="0.45" />
   </Style>
 </Styles>
