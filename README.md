@@ -1,29 +1,87 @@
 # nbt-diff
 
-Compares Minecraft NBT data: two files at tag level, or two Java Edition world directories
-recursively in a Beyond Compare style two-pane view. Read-only. Runs on Windows and Linux.
+Compare Minecraft worlds and NBT files side by side, the way Beyond Compare or WinMerge compares
+folders and text. Point it at two copies of a world and see which files, chunks and tags actually
+changed; open any of them for a tag-level diff; copy values across and save them back.
 
-A world scan never reports a difference that is not a content difference: chunk timestamps,
-sector layout and recompression are ignored (a fast byte-level pass first, then only the files
-whose bytes differ are parsed and compared canonically). Corrupt files show as errors instead of
-aborting the scan.
+Built for modded Java Edition worlds as much as vanilla: FTB-style `.snbt` quest and config files
+are read, and reordered entity or item lists are matched by identity instead of position.
+
+Runs on Windows and Linux.
+
+<!-- Screenshots: folder compare, region chunk grid, tag diff. -->
+
+## Features
+
+- **World compare.** Two world folders side by side as a tree with per-row states (same /
+  different / left only / right only / unreadable). Folders roll up the state of their contents;
+  filters show only differences, orphans or errors.
+- **Only real differences.** Chunk timestamps, region sector layout and recompression are not
+  differences. A fast byte-level pass finds candidates, then only those files are parsed and
+  compared by content. Tags that change on every save (`LastUpdate`) are ignored by default.
+- **Region view.** A 32×32 grid of a region file's chunks, coloured by state; open any chunk for its
+  tag diff and step through the changed chunks with `Ctrl+F7` / `Ctrl+F8`.
+- **Tag diff.** An aligned tree of both sides: changed values, added and removed tags, type
+  changes, array differences. Lists of entities, block entities and items are matched by UUID,
+  position or id, so a reordered list is not reported as changed.
+- **Text diff** for the other files in a world or modpack (`.json`, `.toml`, `.cfg`, `.properties`,
+  `.yml`, logs…).
+- **Export** a folder compare as a text or JSON report.
+- **Copy and save.** Copy a value or a whole subtree from one side to the other, WinMerge-style,
+  and save the edited side back to its file or region.
+- **Corrupt files don't stop a scan.** They show as an error row with the reason.
+- **Formats:** Java NBT (`level.dat`, player data, `.nbt`, `.schematic`/`.litematic` and other
+  gzip/zlib/uncompressed NBT), region files (`.mca`, `.mcr`, external `.mcc` chunks), SNBT including
+  FTB's dialect, and Bedrock NBT / `level.dat` (compare only).
+
+## Download
+
+Get the latest build from the [Releases](../../releases) page. Each release has two builds per
+platform:
+
+| File | What it is |
+| --- | --- |
+| `nbtdiff-<version>-win-x64.zip` / `nbtdiff-<version>-linux-x64.tar.gz` | **Standalone.** Unzip and run. Most people want this. |
+| `…-needs-dotnet10.zip` / `…-needs-dotnet10.tar.gz` | Half the size, but needs the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed. |
+
+Windows SmartScreen will warn that the program is from an unknown publisher; the builds are not
+code-signed. Choose "More info" → "Run anyway". On Linux, `chmod +x nbtdiff` if your archive tool
+dropped the executable bit.
 
 ## Usage
+
+Start it with no arguments for an empty folder view, or pass two paths:
 
 ```text
 nbtdiff                              empty folder view
 nbtdiff <left-world> <right-world>   folder compare, scan starts immediately
-nbtdiff <left.mca> <right.mca>       32×32 chunk grid; open a chunk for its tag diff
-nbtdiff <left.dat> <right.dat>       aligned tag tree (also .nbt, .snbt incl. FTB's dialect, schematics)
+nbtdiff <left.mca> <right.mca>       chunk grid; open a chunk for its tag diff
+nbtdiff <left.dat> <right.dat>       tag diff (also .nbt, .snbt, schematics)
 nbtdiff <left.json> <right.json>     side-by-side line diff (also .txt .properties .log …)
 ```
 
-One side may be a path that does not exist; it is shown as entirely missing.
+One side may be a path that does not exist; it is shown as entirely missing. The startup folder
+view also compares two files: type two file paths, or pick them with the `…` button's "File…"
+entry, and press Compare.
 
-Folder view row states: `=` same · `≠` different · `≠` dimmed = bytes differ, content not yet
-verified · blue = left only · purple = right only · struck through = unreadable. Folders take the
-"worst" state of their contents. The Differences filter shows changed and one-sided rows; unreadable
-files are under the Errors filter (and All).
+### Folder view
+
+Row states: `=` same · `≠` different · `≠?` bytes differ but content not yet verified · blue = left
+only · purple = right only · struck through = unreadable. Double-click a file to open it; a folder
+scan keeps its state when you come back.
+
+The status bar says which pass is running: `pass 1 of 2 — hashing bytes` reads every file once
+without decompressing; `pass 2 of 2 — verifying content n/m` parses only the files whose bytes
+differed. Until pass 2 has settled a row (or with Deep verify off) it shows `≠?`, never `≠`.
+Opening such a region verifies it and says so in the header when every chunk turns out identical.
+
+Options:
+
+- **Ignore tags** — tag paths that are not content. Default `LastUpdate, Level/LastUpdate`; add
+  `InhabitedTime` if you want that ignored too.
+- **Match list items by key** (on by default) — pairs entities by UUID, block entities by position
+  and items by id, in the scan, the chunk grid and the tag view alike.
+- **Deep verify** — run pass 2. Off gives a faster, byte-only scan.
 
 ### Keyboard
 
@@ -35,38 +93,35 @@ files are under the Errors filter (and All).
 | `F8` / `F7` | — | — | next / previous change (wraps) |
 | `Ctrl+F8` / `Ctrl+F7` | — | — | next / previous changed chunk of the region (chunk views only) |
 | `Alt+→` / `Alt+←` | — | — | copy the selected row's value or subtree to the other side |
-| `Ctrl+S` | — | — | save edited side(s) back to their files / region (tag view) |
-| `◀ Back` button | | return to the previous view; a folder scan keeps its state and the row you opened is re-selected and scrolled into view | |
+| `Ctrl+S` | — | — | save edited side(s) |
+| `◀ Back` button | | return to the previous view | |
 
-The startup folder view also compares two files: type two file paths, or pick them with the `…`
-button's "File…" entry (next to "Folder…"), and press Compare.
+## Editing and saving
 
-In the tag view, `◀ Copy to left` / `Copy to right ▶` copy the selected row — a single value or a
-whole subtree, into an existing or a missing side alike — from one side to the other, WinMerge-style,
-and the diff refreshes immediately. Edits live in memory until `Ctrl+S` writes each edited side back:
-`.dat`/`.snbt` files are rewritten in their original compression (a one-time `.bak` keeps the
-pre-nbtdiff copy), and a chunk is re-appended to its region file the way Minecraft itself saves (dead
-sectors are left behind; the chunk keeps its compression scheme). Going Back, stepping to another
-chunk, or closing the window with unsaved copies asks before discarding them. Bedrock files are
-compared but not written.
+In the tag view, `◀ Copy to left` / `Copy to right ▶` copy the selected row (a single value or a
+whole subtree, into an existing or a missing side alike) from one side to the other, and the diff
+refreshes immediately. Edits stay in memory until `Ctrl+S` writes each edited side back:
 
-Chunks re-saved by Minecraft with only their `LastUpdate` tick changed are not differences: the
-"Ignore tags" box lists tag paths that are not content (default `LastUpdate, Level/LastUpdate`;
-add `InhabitedTime` if you want that ignored too). Reordered entity / block-entity / item lists are
-not differences either: "Match list items by key" (on by default) pairs entities by UUID, block
-entities by position and items by id, in the scan, the chunk grid and the tag view alike.
+- `.dat` and `.snbt` files are rewritten in their original compression. The first save of a file
+  keeps the original as `<file>.bak`.
+- A chunk is re-appended to its region file the way Minecraft itself saves; the chunk keeps its
+  compression scheme.
+- Bedrock files are compared but not written.
 
-The status bar says which pass is running: `pass 1 of 2 — hashing bytes` reads every file once
-without decompressing; `pass 2 of 2 — verifying content n/m` parses only the files whose bytes
-differed. Until pass 2 has settled a row (or with Deep verify off) it shows `≠?` — "bytes differ,
-content not verified" — never `≠`; opening such a region verifies it and says so in the header when
-every chunk turns out identical.
+Going Back, stepping to another chunk, or closing the window with unsaved copies asks before
+discarding them.
 
-Options (deep verify, key-order sensitivity, matching list items by UUID/id, exclude globs,
-ignored tags, window placement, recent pairs) persist in `%APPDATA%\nbtdiff\settings.json` on Windows and
-`~/.config/nbtdiff/settings.json` on Linux.
+**Before you save anything, back up the world, and close it in Minecraft** (or stop the server).
+Minecraft keeps its own copy of loaded chunks in memory and will overwrite your change, or worse,
+when it next saves.
 
-## Build
+## Settings
+
+Options, recent pairs and window placement persist in `%APPDATA%\nbtdiff\settings.json` on Windows
+and `~/.config/nbtdiff/settings.json` on Linux. Exclude globs (default `session.lock`) are only
+editable in that file for now.
+
+## Building from source
 
 Requires the .NET 10 SDK.
 
@@ -76,17 +131,23 @@ dotnet test
 dotnet run --project src/NbtDiff.App -- <left> <right>
 ```
 
-## Publish
-
-Single-file, framework-dependent binaries (the target machine needs the .NET 10 runtime):
+Single-file binaries:
 
 ```bash
-dotnet publish src/NbtDiff.App -p:PublishProfile=win-x64     # → publish/win-x64/nbtdiff.exe
-dotnet publish src/NbtDiff.App -p:PublishProfile=linux-x64   # → publish/linux-x64/nbtdiff
+dotnet publish src/NbtDiff.App -p:PublishProfile=win-x64                        # needs .NET 10 → publish/win-x64/
+dotnet publish src/NbtDiff.App -p:PublishProfile=linux-x64 -p:SelfContained=true   # standalone → publish/linux-x64-standalone/
 ```
 
 CI builds and tests on Windows and Ubuntu on every push and pull request. Pushes to `master`, `v*`
-tags and manual runs also publish `nbtdiff-win-x64` and `nbtdiff-linux-x64` as workflow artifacts. Pushing a `v*` tag also creates a GitHub release with
-both binaries attached.
+tags and manual runs also publish all four builds as workflow artifacts; a `v*` tag creates a
+GitHub release with them attached (`v0.*` tags are marked pre-release).
 
-Design: `docs/DESIGN.md`. Stages: `docs/PLAN.md`. Third-party attribution: `third_party/NOTICE`.
+Design notes: `docs/DESIGN.md`. Build stages: `docs/PLAN.md`.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party components and their licenses are listed in
+[third_party/NOTICE](third_party/NOTICE), which also ships in every release archive as
+`THIRD-PARTY-NOTICES.txt`.
+
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.

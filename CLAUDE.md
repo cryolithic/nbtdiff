@@ -63,7 +63,8 @@ dotnet build                                  # warnings are errors (Directory.B
 dotnet run --project src/NbtDiff.App -- <left> <right>
 dotnet test
 dotnet test tests/NbtDiff.Core.Tests          # one project
-dotnet publish src/NbtDiff.App -p:PublishProfile=win-x64   # publish/win-x64/nbtdiff.exe (also linux-x64)
+dotnet publish src/NbtDiff.App -p:PublishProfile=win-x64   # publish/win-x64/nbtdiff.exe, needs .NET 10 (also linux-x64)
+dotnet publish src/NbtDiff.App -p:PublishProfile=win-x64 -p:SelfContained=true   # publish/win-x64-standalone/
 NBTDIFF_DEMO_DIR=<dir> dotnet test tests/NbtDiff.App.Tests --filter DemoWorld   # demo world pair
 NBTDIFF_PERF_DIR=<dir> dotnet test tests/NbtDiff.Core.Tests --filter PerfScan   # perf harness
 dotnet test --filter "FullyQualifiedName~RegionFileTests"   # single test class
@@ -236,6 +237,12 @@ Things discovered while building that are not visible from the code. Append here
   `HeadlessUi` in `TestSupport.cs`); the converters' static `SolidColorBrush`es are thread-affine,
   so any test that creates or reads Avalonia objects must do it via `HeadlessUi.Run` / the session
   dispatcher, or the view tests that render them later fail with a cross-thread error.
+- 2026-09-26 (release prep): MIT licensed. `third_party/NOTICE` covers every component in the
+  binaries (vendored fNbt, NuGet packages, the natives statically inside libSkiaSharp — Skia,
+  libpng, libjpeg-turbo, libwebp, Wuffs — plus HarfBuzz, ANGLE and the Inter font); the app csproj
+  copies it, `LICENSE` and the two verbatim notice files next to every published executable. If a
+  package is added, update NOTICE. Version is 0.8.0 in `Directory.Build.props`; CI overrides it
+  from the `v*` tag and releases `v0.*` as pre-release, standalone and `-needs-dotnet10` builds.
 - Tooling: the Bash tool rewrites `
 `-style escapes inside long commands; edit C# containing
   char/string escapes with the Edit/Write tools, not python heredocs.

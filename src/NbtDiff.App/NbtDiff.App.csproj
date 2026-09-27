@@ -28,6 +28,14 @@
     <InternalsVisibleTo Include="NbtDiff.App.Tests" />
   </ItemGroup>
 
+  <!-- License and third-party notices travel with every published binary (BSD-3 and OFL require it). -->
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Link="LICENSE.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\third_party\NOTICE" Link="THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\third_party\dotnet-THIRD-PARTY-NOTICES.txt" Link="dotnet-THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\third_party\CommunityToolkit.Mvvm-ThirdPartyNotices.txt" Link="CommunityToolkit.Mvvm-ThirdPartyNotices.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
   <!-- The native Skia/HarfBuzz packages ship .pdb files as native assets, which
        CopyDebugSymbolFilesFromPackages does not cover; drop them from the publish set. -->
   <Target Name="StripNativePdbsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
